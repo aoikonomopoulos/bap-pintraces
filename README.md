@@ -49,8 +49,10 @@ $ echo 'export PIN_ROOT=$HOME/opt/pin-2.14-71313-gcc.4.4.7-linux' >>$HOME/.bashr
 $ echo 'export PATH=$PATH:$PIN_ROOT' >>$HOME/.bashrc
 ```
 
+# Usage
 
+To run executable `exec` and to save the trace data to `exec.frame`, use
 
-
-
-
+```bash
+$ pin -injection child -t obj-intel64/pintracer.so -tracefile exec.frame -- exec
+```
