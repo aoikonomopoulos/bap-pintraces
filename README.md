@@ -80,9 +80,9 @@ $ make
 $ make install
 ```
 
-Download [bap-pintraces](https://github.com/feseal/bap-pintraces) with following command
+Download [bap-pintraces](https://github.com/BinaryAnalysisPlatform/bap-pintraces) with following command
 ```bash
-$ git clone https://github.com/feseal/bap-pintraces.git
+$ git clone https://github.com/BinaryAnalysisPlatform/bap-pintraces.git
 ```
 
 Change folder to bap-pintraces and build tracer with command
