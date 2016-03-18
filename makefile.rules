@@ -285,6 +285,10 @@ endif
 
 # placeholder for special dlls' build rules
 
+ifeq ($(COMPILER),gcc)
+	TOOL_CXXFLAGS += -Wno-error
+endif
+
 ifeq ($(TARGET_OS),windows)
 	TOOL_CXXFLAGS += -Iddk-inc
 endif

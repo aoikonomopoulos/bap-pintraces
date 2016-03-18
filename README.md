@@ -13,9 +13,9 @@ Note: building instructions assume that you're using Ubuntu, but it
 may work on other systems, that uses apt-get.
 
 Before build tracer, you need download and install
-       * [pin](https://software.intel.com/en-us/articles/pintool-downloads)
-       * autoconf, libtool, protobuf-compiler
-       * [pin](https://software.intel.com/en-us/articles/pintool-downloads)
+  * [pin](https://software.intel.com/en-us/articles/pintool-downloads)
+  * autoconf, libtool, protobuf-compiler
+  * [piqi library](http://piqi.org/doc/ocaml)
 
 Here are installation example.
 
@@ -25,7 +25,7 @@ Download [pin](https://software.intel.com/en-us/articles/pintool-downloads) libr
 $ wget http://software.intel.com/sites/landingpage/pintool/downloads/pin-2.14-71313-gcc.4.4.7-linux.tar.gz
 ```
 
-Suppose we want install pin to $(HOME)/opt directory then:
+Suppose you want install pin to $(HOME)/opt directory then:
 
 ```bash
 $ tar xvzf pin-2.14-71313-gcc.4.4.7-linux.tar.gz -C $HOME/opt
@@ -72,7 +72,7 @@ following command
 ```bash
 $ git clone https://github.com/BinaryAnalysisPlatform/bap-frames.git
 ```
-Change folder to bap-frames/libtrace. Build and install library with following command
+Change folder to `bap-frames/libtrace`. Build and install library with following command
 ```bash
 $ ./autogen.sh 
 $ ./configure 
@@ -89,8 +89,8 @@ Change folder to bap-pintraces and build tracer with command
 ```
 $ make
 ```
-To run executable `exec` and to save the trace data to `exec.frame`, use
+To run executable `exec` and to save the trace data to `<process id>-exec.frame`, use
 
 ```bash
-$ pin -injection child -t obj-intel64/gentrace.so -tracefile exec.frame -- exec
+$ pin -injection child -t obj-intel64/gentrace.so -o exec.frame -logall_before 1 -- exec
 ```

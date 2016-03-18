@@ -135,7 +135,7 @@ namespace WINDOWS {
 #endif
 
 KNOB<string> KnobOut(KNOB_MODE_WRITEONCE, "pintool",
-                     "o", "out.bpt",
+                     "o", "trace.frames",
                      "Trace file to output to.");
 
 KNOB<int> KnobTrigAddr(KNOB_MODE_WRITEONCE, "pintool",
