@@ -2,7 +2,7 @@
 #include "pin_taint.h"
 #include "pin_syscalls.h"
 #include "winsyscalls.h"
-#include "trace.container.hpp"
+#include <libtrace/trace.container.hpp>
 #include <cassert>
 #include <sstream>
 
@@ -131,6 +131,9 @@ void TaintTracker::trackFile(string file)
   taint_files.insert(file);
 }
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 //
 void TaintTracker::setTaintStdin()
 {

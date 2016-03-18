@@ -14,7 +14,7 @@
 #include <asm/unistd.h>
 #endif
 #include "pin_misc.h"
-#include "trace.container.hpp"
+#include <libtrace/trace.container.hpp>
 
 // Size of temporary buffers
 #define BUFSIZE 128

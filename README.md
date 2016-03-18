@@ -13,15 +13,19 @@ Note: building instructions assume that you're using Ubuntu, but it
 may work on other systems, that uses apt-get.
 
 Before build tracer, you need download and install
-[pin](https://software.intel.com/en-us/articles/pintool-downloads).
+       * [pin](https://software.intel.com/en-us/articles/pintool-downloads)
+       * autoconf, libtool, protobuf-compiler
+       * [pin](https://software.intel.com/en-us/articles/pintool-downloads)
 
-Here are installation example:
+Here are installation example.
+
+Download [pin](https://software.intel.com/en-us/articles/pintool-downloads) library:
 
 ```bash
 $ wget http://software.intel.com/sites/landingpage/pintool/downloads/pin-2.14-71313-gcc.4.4.7-linux.tar.gz
 ```
 
-Suppose we whant install pin to $(HOME)/opt directory then:
+Suppose we want install pin to $(HOME)/opt directory then:
 
 ```bash
 $ tar xvzf pin-2.14-71313-gcc.4.4.7-linux.tar.gz -C $HOME/opt
@@ -34,8 +38,9 @@ variable with a command like:
 $ export PIN_ROOT=$HOME/opt/pin-2.14-71313-gcc.4.4.7-linux
 ```
 
-To let bash know where pin executable is installed? add the PIN_ROOT to PATH
+To let bash know where pin executable is installed add the PIN_ROOT to PATH
 environment variable with a command like:
+
 ```bash
 $ export PATH=$PATH:$PIN_ROOT
 ```
@@ -49,10 +54,43 @@ $ echo 'export PIN_ROOT=$HOME/opt/pin-2.14-71313-gcc.4.4.7-linux' >>$HOME/.bashr
 $ echo 'export PATH=$PATH:$PIN_ROOT' >>$HOME/.bashrc
 ```
 
-# Usage
+To install autoconf, libtool, protobuf-compiler, use the
+following command
 
+```bash
+$ sudo apt-get install autoconf libtool protobuf-compiler
+```
+To install [piqi library](http://piqi.org/doc/ocaml) with
+[opam](https://opam.ocaml.org/doc/Install.html), use the following command
+```bash
+$ opam install piqi
+```
+# Build process
+Download [bap-frames](https://github.com/BinaryAnalysisPlatform/bap-frames) with
+following command
+
+```bash
+$ git clone https://github.com/BinaryAnalysisPlatform/bap-frames.git
+```
+Change folder to bap-frames/libtrace. Build and install library with following command
+```bash
+$ ./autogen.sh 
+$ ./configure 
+$ make
+$ make install
+```
+
+Download [bap-pintraces](https://github.com/feseal/bap-pintraces) with following command
+```bash
+$ git clone https://github.com/feseal/bap-pintraces.git
+```
+
+Change folder to bap-pintraces and build tracer with command
+```
+$ make
+```
 To run executable `exec` and to save the trace data to `exec.frame`, use
 
 ```bash
-$ pin -injection child -t obj-intel64/pintracer.so -tracefile exec.frame -- exec
+$ pin -injection child -t obj-intel64/gentrace.so -tracefile exec.frame -- exec
 ```

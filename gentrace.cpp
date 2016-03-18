@@ -17,7 +17,7 @@
 //#include "cache.h"
 
 /* The new trace container format */
-#include "trace.container.hpp"
+#include <libtrace/trace.container.hpp>
 
 #include "pivot.h"
 
@@ -679,13 +679,13 @@ VOID FlushInstructions()
         /* The operand_list is a required field, so we must access it
            even if there are no operands or protobuffers will complain to
            us. */
-        fnew.mutable_std_frame()->mutable_operand_list();
+        fnew.mutable_std_frame()->mutable_operand_pre_list();
 
         for (uint32_t j = 0; j < g_buffer[i].values_count; j++) {
 
             ValSpecRec &v = g_buffer[i].valspecs[j];
 
-            operand_info *o = fnew.mutable_std_frame()->mutable_operand_list()->add_elem();
+            operand_info *o = fnew.mutable_std_frame()->mutable_operand_pre_list()->add_elem();
             o->set_bit_length(GetBitSize(v.type));
             o->mutable_operand_usage()->set_read(v.usage & RD);
             o->mutable_operand_usage()->set_written(v.usage & WR);
