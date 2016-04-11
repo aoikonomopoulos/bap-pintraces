@@ -89,8 +89,8 @@ Change folder to bap-pintraces and build tracer with command
 ```
 $ make
 ```
-To run executable `exec` and to save the trace data to `<process id>-exec.frame`, use
+To run executable `exec` and to save the trace data to `<process id>-exec.frames`, use
 
 ```bash
-$ pin -injection child -t obj-intel64/gentrace.so -o exec.frame -logall_before 1 -- exec
+$ pin -injection child -t obj-intel64/gentrace.so -o exec.frames -logall_before 1 -- exec
 ```
