@@ -58,7 +58,7 @@ To install autoconf, libtool, protobuf-compiler, use the
 following command
 
 ```bash
-$ sudo apt-get install autoconf libtool protobuf-compiler
+$ sudo apt-get install autoconf libtool protobuf-compiler libprotobuf-dev
 ```
 To install [piqi library](http://piqi.org/doc/ocaml) with
 [opam](https://opam.ocaml.org/doc/Install.html), use the following command
