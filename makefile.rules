@@ -34,7 +34,7 @@ SANITY_SUBSET :=
 
 # This defines the tools which will be run during the the tests, and were not already defined in
 # TEST_TOOL_ROOTS.
-TOOL_ROOTS := gentrace
+TOOL_ROOTS := gentrace mytrace
 
 # This defines the static analysis tools which will be run during the the tests. They should not
 # be defined in TEST_TOOL_ROOTS. If a test with the same name exists, it should be defined in
@@ -293,9 +293,9 @@ ifeq ($(TARGET_OS),windows)
 	TOOL_CXXFLAGS += -Iddk-inc
 endif
 
-TOOL_LIBS += -ltrace -lprotobuf -lz -lpthread
+TOOL_LIBS += -L$(HOME)/opt/libtrace/lib -ltrace -lprotobuf -lz -lpthread
 
-TOOL_CXXFLAGS += -DUSING_PIN
+TOOL_CXXFLAGS += -DUSING_PIN -I$(HOME)/opt/libtrace/include
 
 BAPOBJS = $(OBJDIR)pivot$(OBJ_SUFFIX) \
           $(OBJDIR)pin_misc$(OBJ_SUFFIX) \
