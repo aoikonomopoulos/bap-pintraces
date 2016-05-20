@@ -68,15 +68,29 @@ void register_write(const CONTEXT *ctxt, REG reg) {
 
 std::list< std::pair<ADDRINT, UINT32> > m_mems;
 
-void memory_load(ADDRINT addr, UINT32 size) {
-    bap::tracer<ADDRINT, THREADID>::data_type data(size);
-    PIN_SafeCopy(static_cast<VOID*>(&data[0]),
-                 reinterpret_cast<VOID*>(addr), size);
-    tracer->memory_load(addr, data);
+void memory_load(UINT32 values_count, ...) {
+    va_list va;
+    va_start(va, values_count);
+    for (UINT32 i=0; i < values_count; ++i) {
+        ADDRINT addr = va_arg(va, ADDRINT);
+        UINT32 size = va_arg(va, UINT32);
+        bap::tracer<ADDRINT, THREADID>::data_type data(size);
+        PIN_SafeCopy(static_cast<VOID*>(&data[0]),
+                     reinterpret_cast<VOID*>(addr), size);
+        tracer->memory_load(addr, data);
+    }
+    va_end(va);
 }
 
-void remember_memory_store(ADDRINT addr, UINT32 size) {
-    m_mems.push_back(std::make_pair(addr, size));
+void remember_memory_store(UINT32 values_count, ...) {
+    va_list va;
+    va_start(va, values_count);
+    for (UINT32 i=0; i < values_count; ++i) {
+        ADDRINT addr = va_arg(va, ADDRINT);
+        UINT32 size = va_arg(va, UINT32);
+        m_mems.push_back(std::make_pair(addr, size));
+    }
+    va_end(va);
 }
 
 void memory_store(ADDRINT addr, UINT32 size) {
@@ -148,8 +162,48 @@ VOID instruction_regs(INS ins) {
     IARGLIST_Free(regs_wr);
 }
 
-// Is called for every instruction and instruments reads and writes
-VOID Instruction(INS ins, VOID*) {
+VOID instruction_mem(INS ins) {
+    IARGLIST mem_ld = IARGLIST_Alloc();
+    IARGLIST mem_st = IARGLIST_Alloc();
+    UINT32 ld_count = 0;
+    UINT32 st_count = 0;
+
+    for (UINT32 i = 0, I = INS_MemoryOperandCount(ins); i < I; ++i) {
+        if (INS_MemoryOperandIsRead(ins, i)) {
+            IARGLIST_AddArguments(
+                mem_ld,
+                IARG_MEMORYOP_EA, i,
+                IARG_UINT32, INS_MemoryReadSize(ins),
+                IARG_END);
+            ++ld_count;
+        }
+
+        if (INS_MemoryOperandIsWritten(ins, i)) {
+            IARGLIST_AddArguments(
+                mem_st,
+                IARG_MEMORYOP_EA, i,
+                IARG_UINT32, INS_MemoryWriteSize(ins),
+                IARG_END);
+            ++st_count;
+        }
+    }
+
+    INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
+                             (AFUNPTR)(trace::memory_load),
+                             IARG_UINT32, ld_count,
+                             IARG_IARGLIST, mem_ld,
+                             IARG_END);
+
+    INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
+                             (AFUNPTR)(trace::remember_memory_store),
+                             IARG_UINT32, st_count,
+                             IARG_IARGLIST, mem_st,
+                             IARG_END);
+    IARGLIST_Free(mem_ld);
+    IARGLIST_Free(mem_st);
+}
+
+VOID instruction(INS ins, VOID*) {
     std::string *dis = new std::string(INS_Disassemble(ins));
     if (INS_HasRealRep(ins)) {
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(trace::code_exec),
@@ -171,49 +225,25 @@ VOID Instruction(INS ins, VOID*) {
                        IARG_END);
     }
     instruction_regs(ins);
-    for (UINT32 i = 0, I = INS_MemoryOperandCount(ins); i < I; ++i) {
-        if (INS_MemoryOperandIsRead(ins, i)) {
-            INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                                     (AFUNPTR)(trace::memory_load),
-                                     IARG_MEMORYOP_EA, i,
-                                     IARG_UINT32, INS_MemoryReadSize(ins),
-                                     IARG_END);
-        }
-
-        if (INS_MemoryOperandIsWritten(ins, i)) {
-            INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                                     (AFUNPTR)(trace::remember_memory_store),
-                                     IARG_MEMORYOP_EA, i,
-                                     IARG_UINT32, INS_MemoryWriteSize(ins),
-                                     IARG_END);
-        }
-    }
+    instruction_mem(ins);
 }
 
-VOID Fini(INT32 code, VOID*) {
+VOID fini(INT32 code, VOID*) {
     delete tracer;
 }
 
-/* ===================================================================== */
-/* Print Help Message                                                    */
-/* ===================================================================== */
-   
-INT32 Usage() {
+INT32 usage() {
     PIN_ERROR( "This Pintool prints a trace of memory addresses\n" 
               + KNOB_BASE::StringKnobSummary() + "\n");
     return -1;
 }
 
-/* ===================================================================== */
-/* Main                                                                  */
-/* ===================================================================== */
-
 int main(int argc, char *argv[]) {
     PIN_InitSymbols();
-    if (PIN_Init(argc, argv)) return Usage();
+    if (PIN_Init(argc, argv)) return usage();
 
-    INS_AddInstrumentFunction(Instruction, 0);
-    PIN_AddFiniFunction(Fini, 0);
+    INS_AddInstrumentFunction(instruction, 0);
+    PIN_AddFiniFunction(fini, 0);
 
     // Never returns
     PIN_StartProgram();
