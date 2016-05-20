@@ -7,8 +7,10 @@
 #include <vector>
 #include <list>
 #include "pin.H"
+#include "text_tracer.hpp"
 
-
+bap::tracer<ADDRINT, THREADID> *tracer =
+    new bap::text_tracer<ADDRINT, THREADID>("trace.txt");
 std::ofstream out("log.out", std::ofstream::out);
 
 namespace trace {
@@ -17,7 +19,7 @@ std::ostream& operator<< (std::ostream& out, const std::vector<char>& bytes) {
     std::string sep = "";
     for (std::vector<char>::const_iterator b = bytes.begin(); b != bytes.end(); ++b) {
         out << sep << std::hex << std::setfill('0') << std::setw(2)
-            << (static_cast<int>(*b) & 0xFF);
+            << static_cast<int>(static_cast<unsigned char>(*b));
         sep = " ";
     }
     return out;
@@ -39,9 +41,10 @@ std::ostream& operator<< (std::ostream& out, const std::pair<PIN_REGISTER, UINT3
 void start(BOOL cond, const char* dis, ADDRINT addr, UINT32 size, THREADID tid) {
     //out << "start: " << (cond ? "true" : "false") << std::endl;
     if (cond) {
-        std::vector<char> rawbytes(size);
-        PIN_SafeCopy(&rawbytes[0], (const void*) addr, size);
-        out << "insn(" << tid << "): [" << rawbytes << "] -> " << dis << std::endl;
+        bap::tracer<ADDRINT, THREADID>::data_type bytes(size);
+        PIN_SafeCopy(&bytes[0], (const void*) addr, size);
+        tracer->code_exec(dis, addr, bytes, tid);
+        out << "insn(" << tid << "): [" << bytes << "] -> " << dis << std::endl;
     }
     
 }
@@ -51,7 +54,7 @@ void written(const CONTEXT*, REG);
 }//
 
 namespace mem {
-void written(ADDRINT addr, UINT32 size);
+void stored(ADDRINT addr, UINT32 size);
 }
 
 void finish(BOOL cond, const CONTEXT * ctxt) {
@@ -63,7 +66,7 @@ void finish(BOOL cond, const CONTEXT * ctxt) {
     m_regs.clear();
     for (std::list< std::pair<ADDRINT, UINT32> >::const_iterator m =
              m_mems.begin(); m != m_mems.end(); ++m) {
-        mem::written(m->first, m->second);
+        mem::stored(m->first, m->second);
     }
     m_mems.clear();
     if (cond) {
@@ -72,20 +75,26 @@ void finish(BOOL cond, const CONTEXT * ctxt) {
 }
 
 namespace mem {
-void read(ADDRINT addr, UINT32 size) {
+void load(ADDRINT addr, UINT32 size) {
     PIN_REGISTER value;
     PIN_SafeCopy(static_cast<VOID*>(&value), reinterpret_cast<VOID*>(addr), size);
+    bap::tracer<ADDRINT, THREADID>::data_type data(size);
+    PIN_SafeCopy(static_cast<VOID*>(&data[0]), reinterpret_cast<VOID*>(addr), size);
+    tracer->memory_load(addr, data);
     out << std::hex << std::setfill('0') << addr << " => " << std::make_pair(value, size) << std::endl;
 }
 
-void write(ADDRINT addr, UINT32 size) {
+void store(ADDRINT addr, UINT32 size) {
     m_mems.push_back(std::make_pair(addr, size));
 }
 
-void written(ADDRINT addr, UINT32 size) {
+void stored(ADDRINT addr, UINT32 size) {
     PIN_REGISTER value;
     PIN_SafeCopy(static_cast<VOID*>(&value), reinterpret_cast<VOID*>(addr), size);
-    out << std::hex << std::setfill('0') << addr << " => " << std::make_pair(value, size) << std::endl;
+    bap::tracer<ADDRINT, THREADID>::data_type data(size);
+    PIN_SafeCopy(static_cast<VOID*>(&data[0]), reinterpret_cast<VOID*>(addr), size);
+    tracer->memory_store(addr, data);
+    out << std::hex << std::setfill('0') << addr << " <= " << std::make_pair(value, size) << std::endl;
 }
 }
 
@@ -97,6 +106,9 @@ void read(const CONTEXT * ctxt, REG r) {
         UINT32 size = REG_Size(reg);
         PIN_REGISTER value;
         PIN_GetContextRegval(ctxt, reg, reinterpret_cast<UINT8*>(&value));
+        bap::tracer<ADDRINT, THREADID>::data_type data(size);
+        PIN_GetContextRegval(ctxt, reg, reinterpret_cast<UINT8*>(&data[0]));
+        tracer->register_read(REG_StringShort(reg), data);
         out << REG_StringShort(reg) << " => " << std::make_pair(value, size) << std::endl;
     } else {
         out << REG_StringShort(r) << " " << r << " => ?" << std::endl;
@@ -113,6 +125,9 @@ void written(const CONTEXT *ctxt, REG r) {
         UINT32 size = REG_Size(reg);
         PIN_REGISTER value;
         PIN_GetContextRegval(ctxt, reg, reinterpret_cast<UINT8*>(&value));
+        bap::tracer<ADDRINT, THREADID>::data_type data(size);
+        PIN_GetContextRegval(ctxt, reg, reinterpret_cast<UINT8*>(&data[0]));
+        tracer->register_write(REG_StringShort(reg), data);
         out << REG_StringShort(reg) << " <= " << std::make_pair(value, size) << std::endl;
     } /*else {
         out << REG_StringShort(r) << " " << r << " <= ?" << std::endl;
@@ -190,7 +205,7 @@ VOID Instruction(INS ins, VOID*) {
     for (UINT32 i = 0, I = INS_MemoryOperandCount(ins); i < I; ++i) {
         if (INS_MemoryOperandIsRead(ins, i)) {
             INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                                     (AFUNPTR)(trace::mem::read),
+                                     (AFUNPTR)(trace::mem::load),
                                      IARG_MEMORYOP_EA, i,
                                      IARG_UINT32, INS_MemoryReadSize(ins),
                                      IARG_END);
@@ -198,7 +213,7 @@ VOID Instruction(INS ins, VOID*) {
 
         if (INS_MemoryOperandIsWritten(ins, i)) {
             INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                                     (AFUNPTR)(trace::mem::write),
+                                     (AFUNPTR)(trace::mem::store),
                                      IARG_MEMORYOP_EA, i,
                                      IARG_UINT32, INS_MemoryWriteSize(ins),
                                      IARG_END);
@@ -207,6 +222,16 @@ VOID Instruction(INS ins, VOID*) {
 }
 
 VOID Fini(INT32 code, VOID*) {
+    for (std::list<REG>::const_iterator r = trace::m_regs.begin();
+         r != trace::m_regs.end(); ++r) {
+        out << REG_StringShort(*r) << "<=undefined" << std::endl;
+    }
+    for (std::list< std::pair<ADDRINT, UINT32> >::const_iterator m =
+             trace::m_mems.begin(); m != trace::m_mems.end(); ++m) {
+        out << m->first << " <= undefined" << std::endl;
+    }
+
+    delete tracer;
     out.close();
 }
 
