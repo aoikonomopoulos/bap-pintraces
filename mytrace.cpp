@@ -1,6 +1,3 @@
-/*
- *  This file contains an ISA-portable PIN tool for tracing memory accesses.
- */
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -9,18 +6,16 @@
 #include "pin.H"
 #include "text_tracer.hpp"
 
-bap::tracer<ADDRINT, THREADID> *tracer =
-    new bap::text_tracer<ADDRINT, THREADID>("trace.txt");
-
+typedef bap::tracer<ADDRINT, THREADID> tracer_type;
 namespace trace {
 
-void flush(const CONTEXT * ctxt);
-void code_exec(BOOL cond, const CONTEXT* ctx,
+void update_context(tracer_type* tracer, const CONTEXT*);
+void code_exec(tracer_type* tracer, BOOL cond, const CONTEXT* ctx,
                const char* dis, ADDRINT addr, UINT32 size,
                THREADID tid) {
-    flush(ctx);
+    update_context(tracer, ctx);
     if (cond) {
-        bap::tracer<ADDRINT, THREADID>::data_type bytes(size);
+        tracer_type::data_type bytes(size);
         PIN_SafeCopy(&bytes[0], (const void*) addr, size);
         tracer->code_exec(dis, addr, bytes, tid);
     }
@@ -28,7 +23,8 @@ void code_exec(BOOL cond, const CONTEXT* ctx,
 
 std::list<REG> m_regs;
 
-void register_read(const CONTEXT *ctxt, UINT32 values_count, ...) {
+void register_read(tracer_type* tracer, const CONTEXT *ctxt,
+                   UINT32 values_count, ...) {
     va_list va;
     va_start(va, values_count);
     REG reg = REG_INVALID();
@@ -37,7 +33,7 @@ void register_read(const CONTEXT *ctxt, UINT32 values_count, ...) {
         if (REG_valid(reg)) {
             reg = REG_FullRegName(reg);
             UINT32 size = REG_Size(reg);
-            bap::tracer<ADDRINT, THREADID>::data_type data(size);
+            tracer_type::data_type data(size);
             PIN_GetContextRegval(ctxt, reg,
                                  reinterpret_cast<UINT8*>(&data[0]));
             tracer->register_read(REG_StringShort(reg), data);
@@ -46,7 +42,7 @@ void register_read(const CONTEXT *ctxt, UINT32 values_count, ...) {
     va_end(va);
 }
 
-void remember_register_write(UINT32 values_count, ...) {
+void remember_register_write(tracer_type*, UINT32 values_count, ...) {
     va_list va;
     va_start(va, values_count);
     for (UINT32 i=0; i < values_count; ++i) {
@@ -55,11 +51,12 @@ void remember_register_write(UINT32 values_count, ...) {
     va_end(va);
 }
 
-void register_write(const CONTEXT *ctxt, REG reg) {
+void register_write(tracer_type* tracer,
+                    const CONTEXT *ctxt, REG reg) {
     if (REG_valid(reg)) {
         reg = REG_FullRegName(reg);
         UINT32 size = REG_Size(reg);
-        bap::tracer<ADDRINT, THREADID>::data_type data(size);
+        tracer_type::data_type data(size);
         PIN_GetContextRegval(ctxt, reg,
                              reinterpret_cast<UINT8*>(&data[0]));
         tracer->register_write(REG_StringShort(reg), data);
@@ -68,13 +65,13 @@ void register_write(const CONTEXT *ctxt, REG reg) {
 
 std::list< std::pair<ADDRINT, UINT32> > m_mems;
 
-void memory_load(UINT32 values_count, ...) {
+void memory_load(tracer_type* tracer, UINT32 values_count, ...) {
     va_list va;
     va_start(va, values_count);
     for (UINT32 i=0; i < values_count; ++i) {
         ADDRINT addr = va_arg(va, ADDRINT);
         UINT32 size = va_arg(va, UINT32);
-        bap::tracer<ADDRINT, THREADID>::data_type data(size);
+        tracer_type::data_type data(size);
         PIN_SafeCopy(static_cast<VOID*>(&data[0]),
                      reinterpret_cast<VOID*>(addr), size);
         tracer->memory_load(addr, data);
@@ -82,7 +79,7 @@ void memory_load(UINT32 values_count, ...) {
     va_end(va);
 }
 
-void remember_memory_store(UINT32 values_count, ...) {
+void remember_memory_store(tracer_type*, UINT32 values_count, ...) {
     va_list va;
     va_start(va, values_count);
     for (UINT32 i=0; i < values_count; ++i) {
@@ -93,29 +90,29 @@ void remember_memory_store(UINT32 values_count, ...) {
     va_end(va);
 }
 
-void memory_store(ADDRINT addr, UINT32 size) {
-    bap::tracer<ADDRINT, THREADID>::data_type data(size);
+void memory_store(tracer_type* tracer, ADDRINT addr, UINT32 size) {
+    tracer_type::data_type data(size);
     PIN_SafeCopy(static_cast<VOID*>(&data[0]),
                  reinterpret_cast<VOID*>(addr), size);
     tracer->memory_store(addr, data);
 }
 
-void flush(const CONTEXT * ctxt) {
+void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
     for (std::list<REG>::const_iterator r = m_regs.begin();
          r != m_regs.end(); ++r) {
-        register_write(ctxt, *r);
+        register_write(tracer, ctxt, *r);
     }
     m_regs.clear();
     for (std::list< std::pair<ADDRINT, UINT32> >::const_iterator m =
              m_mems.begin(); m != m_mems.end(); ++m) {
-        memory_store(m->first, m->second);
+        memory_store(tracer, m->first, m->second);
     }
     m_mems.clear();
 }
 
 } //namespace trace
 
-VOID instruction_regs(INS ins) {
+VOID instruction_regs(INS ins, VOID* ptr) {
     IARGLIST regs_rd = IARGLIST_Alloc();
     IARGLIST regs_wr = IARGLIST_Alloc();
     UINT32 rd_count = 0;
@@ -149,12 +146,14 @@ VOID instruction_regs(INS ins) {
     }
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(trace::register_read),
+                             IARG_PTR, ptr,
                              IARG_CONTEXT,
                              IARG_UINT32, rd_count,
                              IARG_IARGLIST, regs_rd,
                              IARG_END);
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(trace::remember_register_write),
+                             IARG_PTR, ptr,
                              IARG_UINT32, wr_count,
                              IARG_IARGLIST, regs_wr,
                              IARG_END);
@@ -162,7 +161,7 @@ VOID instruction_regs(INS ins) {
     IARGLIST_Free(regs_wr);
 }
 
-VOID instruction_mem(INS ins) {
+VOID instruction_mem(INS ins, VOID* ptr) {
     IARGLIST mem_ld = IARGLIST_Alloc();
     IARGLIST mem_st = IARGLIST_Alloc();
     UINT32 ld_count = 0;
@@ -190,12 +189,14 @@ VOID instruction_mem(INS ins) {
 
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(trace::memory_load),
+                             IARG_PTR, ptr,
                              IARG_UINT32, ld_count,
                              IARG_IARGLIST, mem_ld,
                              IARG_END);
 
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(trace::remember_memory_store),
+                             IARG_PTR, ptr,
                              IARG_UINT32, st_count,
                              IARG_IARGLIST, mem_st,
                              IARG_END);
@@ -203,10 +204,11 @@ VOID instruction_mem(INS ins) {
     IARGLIST_Free(mem_st);
 }
 
-VOID instruction(INS ins, VOID*) {
+VOID instruction(INS ins, VOID* ptr) {
     std::string *dis = new std::string(INS_Disassemble(ins));
     if (INS_HasRealRep(ins)) {
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(trace::code_exec),
+                       IARG_PTR, ptr,
                        IARG_FIRST_REP_ITERATION,
                        IARG_CONTEXT,
                        IARG_PTR, dis->c_str(),
@@ -216,6 +218,7 @@ VOID instruction(INS ins, VOID*) {
                        IARG_END);
     } else {
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(trace::code_exec),
+                       IARG_PTR, ptr,
                        IARG_BOOL, true,
                        IARG_CONTEXT,
                        IARG_PTR, dis->c_str(),
@@ -224,11 +227,12 @@ VOID instruction(INS ins, VOID*) {
                        IARG_THREAD_ID,
                        IARG_END);
     }
-    instruction_regs(ins);
-    instruction_mem(ins);
+    instruction_regs(ins, ptr);
+    instruction_mem(ins, ptr);
 }
 
-VOID fini(INT32 code, VOID*) {
+VOID fini(INT32 code, VOID* ptr) {
+    tracer_type *tracer = static_cast<tracer_type*>(ptr);
     delete tracer;
 }
 
@@ -242,8 +246,13 @@ int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
 
-    INS_AddInstrumentFunction(instruction, 0);
-    PIN_AddFiniFunction(fini, 0);
+    tracer_type *tracer =
+        new bap::text_tracer<ADDRINT, THREADID>("trace.txt");
+
+    INS_AddInstrumentFunction(instruction,
+                              static_cast<VOID*>(tracer));
+    PIN_AddFiniFunction(fini,
+                        static_cast<VOID*>(tracer));
 
     // Never returns
     PIN_StartProgram();
