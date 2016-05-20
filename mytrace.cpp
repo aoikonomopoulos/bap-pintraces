@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "pin.H"
 #include "text_tracer.hpp"
+#include "frames_tracer.hpp"
 
 typedef bap::tracer<ADDRINT, THREADID> tracer_type;
 namespace trace {
@@ -246,11 +247,11 @@ VOID fini(INT32 code, VOID* ptr) {
 }
 
 KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
-                       "o", "trace.txt",
+                       "o", "trace.frames",
                        "Trace file to output to.");
 
 KNOB<string> format(KNOB_MODE_WRITEONCE, "pintool",
-                    "fmt", "text",
+                    "fmt", "frames",
                     "Trace output format (text | frames).");
 
 
@@ -266,7 +267,7 @@ int main(int argc, char *argv[]) {
     if (PIN_Init(argc, argv)) return usage();
 
     tracer_type *tracer =
-        new bap::text_tracer<ADDRINT, THREADID>(tracefile.Value());
+        new bap::frames_tracer<ADDRINT, THREADID>(tracefile.Value());
 
     INS_AddInstrumentFunction(instruction,
                               static_cast<VOID*>(tracer));
