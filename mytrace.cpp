@@ -262,12 +262,26 @@ INT32 usage() {
     return -1;
 }
 
+tracer_type* build_tracer() {
+    std::string fmt = format.Value();
+    std::string path = tracefile.Value();
+    tracer_type *tracer = 0;
+    if (fmt == "text") {
+        tracer = new bap::text_tracer<ADDRINT, THREADID>(path);
+    } else if (fmt == "frames") {
+        tracer = new bap::frames_tracer<ADDRINT, THREADID>(path);
+    } else {
+        std::cerr << "Unknown trace format " << fmt << std::endl;
+        exit(0);
+    }
+    return tracer;
+}
+        
 int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
 
-    tracer_type *tracer =
-        new bap::frames_tracer<ADDRINT, THREADID>(tracefile.Value());
+    tracer_type *tracer = build_tracer();
 
     INS_AddInstrumentFunction(instruction,
                               static_cast<VOID*>(tracer));
