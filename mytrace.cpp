@@ -3,11 +3,20 @@
 #include <fstream>
 #include <vector>
 #include <list>
+#include <cctype>
+#include <algorithm>
 #include "pin.H"
 #include "text_tracer.hpp"
 
 typedef bap::tracer<ADDRINT, THREADID> tracer_type;
 namespace trace {
+
+std::string register_name(REG reg) {
+    std::string name(REG_StringShort(reg));
+    std::transform(name.begin(), name.end(), name.begin(),
+                   ::toupper);
+    return name;
+}
 
 void update_context(tracer_type* tracer, const CONTEXT*);
 void code_exec(tracer_type* tracer, BOOL cond, const CONTEXT* ctx,
@@ -36,7 +45,7 @@ void register_read(tracer_type* tracer, const CONTEXT *ctxt,
             tracer_type::data_type data(size);
             PIN_GetContextRegval(ctxt, reg,
                                  reinterpret_cast<UINT8*>(&data[0]));
-            tracer->register_read(REG_StringShort(reg), data);
+            tracer->register_read(register_name(reg), data);
         }
     }
     va_end(va);
@@ -59,7 +68,7 @@ void register_write(tracer_type* tracer,
         tracer_type::data_type data(size);
         PIN_GetContextRegval(ctxt, reg,
                              reinterpret_cast<UINT8*>(&data[0]));
-        tracer->register_write(REG_StringShort(reg), data);
+        tracer->register_write(register_name(reg), data);
     }
 }
 
