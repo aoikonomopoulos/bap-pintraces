@@ -75,8 +75,8 @@ std::ostream& print_addr(std::ostream& out, const T& addr) {
 template <typename addr_type, typename thread>
 struct text_tracer : tracer<addr_type, thread> {
     typedef typename tracer<addr_type, thread>::data_type data_type;
-    explicit text_tracer(const char* path)
-        : out(path, std::ofstream::out) {}
+    explicit text_tracer(const std::string& path)
+        : out(path.c_str(), std::ofstream::out) {}
 
     void code_exec(const std::string& dis,
                    addr_type addr,

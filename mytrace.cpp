@@ -245,8 +245,18 @@ VOID fini(INT32 code, VOID* ptr) {
     delete tracer;
 }
 
+KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
+                       "o", "trace.txt",
+                       "Trace file to output to.");
+
+KNOB<string> format(KNOB_MODE_WRITEONCE, "pintool",
+                    "fmt", "text",
+                    "Trace output format (text | frames).");
+
+
 INT32 usage() {
-    PIN_ERROR( "This Pintool prints a trace of memory addresses\n" 
+    PIN_ERROR( "This Pintool trace "
+               "instructions memory and registers usage\n"
               + KNOB_BASE::StringKnobSummary() + "\n");
     return -1;
 }
@@ -256,7 +266,7 @@ int main(int argc, char *argv[]) {
     if (PIN_Init(argc, argv)) return usage();
 
     tracer_type *tracer =
-        new bap::text_tracer<ADDRINT, THREADID>("trace.txt");
+        new bap::text_tracer<ADDRINT, THREADID>(tracefile.Value());
 
     INS_AddInstrumentFunction(instruction,
                               static_cast<VOID*>(tracer));
