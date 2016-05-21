@@ -99,7 +99,7 @@ private:
             ou->set_index(false);
             ou->set_base(false);
             oi->set_value(std::string(data.begin(), data.end()));
-            oi->mutable_taint_info();
+            oi->mutable_taint_info()->set_no_taint(true);
             return oi->mutable_operand_info_specific();
         }
     private:
