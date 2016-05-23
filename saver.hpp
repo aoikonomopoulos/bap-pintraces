@@ -1,12 +1,12 @@
-#ifndef BAP_PIN_TRACER_HPP
-#define BAP_PIN_TRACER_HPP
+#ifndef BAP_PIN_SAVER_HPP
+#define BAP_PIN_SAVER_HPP
 #include <vector>
 namespace bap {
 
 typedef std::vector<char> bytes_type;
 
 template <typename addr_type, typename thread>
-struct tracer {
+struct saver {
     virtual void code_exec(const std::string&,
                            addr_type, const bytes_type&, thread) = 0;
     virtual void memory_load(addr_type, const bytes_type&) = 0;
@@ -17,14 +17,14 @@ struct tracer {
     virtual void register_write(const std::string&,
                                 const bytes_type&,
                                 int bitsize = 0) = 0;
-    virtual ~tracer() {}
+    virtual ~saver() {}
 protected:
-    tracer() {};
+    saver() {};
 private:
-    tracer(const tracer&);
-    tracer& operator=(const tracer&);
+    saver(const saver&);
+    saver& operator=(const saver&);
 };
 
 } //namespace bap
 
-#endif //BAP_PIN_TRACER_HPP
+#endif //BAP_PIN_SAVER_HPP

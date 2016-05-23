@@ -1,16 +1,16 @@
-#ifndef BAP_PIN_FRAMES_TRACER_HPP
-#define BAP_PIN_FRAMES_TRACER_HPP
+#ifndef BAP_PIN_FRAMES_SAVER_HPP
+#define BAP_PIN_FRAMES_SAVER_HPP
 #include <memory>
 #include <boost/scoped_ptr.hpp>
 #include <libtrace/trace.container.hpp>
-#include "tracer.hpp"
+#include "saver.hpp"
 
 namespace bap {
 
 namespace trc = SerializedTrace;
 
 template <typename addr_type, typename thread>
-struct frames_tracer : tracer<addr_type, thread> {
+struct frames_saver : saver<addr_type, thread> {
     static const frame_architecture arch = frame_arch_i386;
 #if defined(TARGET_IA32)
     static const uint64_t machine = frame_mach_i386_i386
@@ -20,7 +20,7 @@ struct frames_tracer : tracer<addr_type, thread> {
 #error "Usupported machine"
 #endif
     enum usage {R, W};
-    explicit frames_tracer(const std::string& path)
+    explicit frames_saver(const std::string& path)
         : out(path, arch, machine) {}
 
     void code_exec(const std::string& dis,
@@ -50,13 +50,13 @@ struct frames_tracer : tracer<addr_type, thread> {
         current->reg_operand(W, name, data);
     }
 
-    ~frames_tracer() {
+    ~frames_saver() {
         current.reset();
         out.finish();
     }
 private:
     struct holder {
-        holder(frames_tracer& p,
+        holder(frames_saver& p,
                addr_type addr, const bytes_type& bytes, thread tid)
             : parent(p) {
             ::std_frame* sf = frm.mutable_std_frame();
@@ -105,7 +105,7 @@ private:
             return oi->mutable_operand_info_specific();
         }
     private:
-        frames_tracer& parent;
+        frames_saver& parent;
         ::frame frm;
     };
 
@@ -116,4 +116,4 @@ private:
 
 }
 
-#endif //BAP_PIN_FRAMES_TRACER_HPP
+#endif //BAP_PIN_FRAMES_SAVER_HPP

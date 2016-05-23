@@ -1,12 +1,12 @@
-#ifndef BAP_PIN_TEXT_TRACER_HPP
-#define BAP_PIN_TEXT_TRACER_HPP
+#ifndef BAP_PIN_TEXT_SAVER_HPP
+#define BAP_PIN_TEXT_SAVER_HPP
 
 #include <iomanip>
 #include <fstream>
 #include <numeric>
 #include <algorithm>
 #include <functional>
-#include "tracer.hpp"
+#include "saver.hpp"
 
 namespace bap {
 
@@ -74,8 +74,8 @@ std::ostream& print_addr(std::ostream& out, const T& addr) {
 }
 
 template <typename addr_type, typename thread>
-struct text_tracer : tracer<addr_type, thread> {
-    explicit text_tracer(const std::string& path)
+struct text_saver : saver<addr_type, thread> {
+    explicit text_saver(const std::string& path)
         : out(path.c_str(), std::ofstream::out) {}
 
     void code_exec(const std::string& dis,
@@ -109,7 +109,7 @@ struct text_tracer : tracer<addr_type, thread> {
         register_io( " <= ", name, data, bitsize);
     }
 
-    ~text_tracer() {
+    ~text_saver() {
         out.close();
     }
 private:
@@ -135,4 +135,4 @@ private:
 
 }
 
-#endif //BAP_PIN_TEXT_TRACER_HPP
+#endif //BAP_PIN_TEXT_SAVER_HPP

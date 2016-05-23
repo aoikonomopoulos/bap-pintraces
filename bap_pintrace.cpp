@@ -3,25 +3,25 @@
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include "pin.H"
-#include "text_tracer.hpp"
-#include "frames_tracer.hpp"
+#include "text_saver.hpp"
+#include "frames_saver.hpp"
 #include "none_flags_splitter.hpp"
 #include "arch_size_flags_splitter.hpp"
 #include "full_flags_splitter.hpp"
 
 struct tracer_type {
-    tracer_type(bap::tracer<ADDRINT, THREADID>* saver,
+    tracer_type(bap::saver<ADDRINT, THREADID>* saver,
                 bap::flags_splitter* splitter)
         : saver_(saver)
         , splitter_(splitter) {}
-    bap::tracer<ADDRINT, THREADID>& save() { return *saver_; }
+    bap::saver<ADDRINT, THREADID>& save() { return *saver_; }
     bap::flags_splitter& split() { return *splitter_; }
     ~tracer_type() {
         delete saver_;
         delete splitter_;
     }
 private:
-    bap::tracer<ADDRINT, THREADID>* saver_;
+    bap::saver<ADDRINT, THREADID>* saver_;
     bap::flags_splitter* splitter_;
 };
 
@@ -336,11 +336,11 @@ tracer_type* build_tracer() {
     std::string fmt = format.Value();
     std::string spl = split.Value();
     std::string path = tracefile.Value();
-    bap::tracer<ADDRINT, THREADID> *tracer = 0;
+    bap::saver<ADDRINT, THREADID> *saver = 0;
     if (fmt == "text") {
-        tracer = new bap::text_tracer<ADDRINT, THREADID>(path);
+        saver = new bap::text_saver<ADDRINT, THREADID>(path);
     } else if (fmt == "frames") {
-        tracer = new bap::frames_tracer<ADDRINT, THREADID>(path);
+        saver = new bap::frames_saver<ADDRINT, THREADID>(path);
     } else {
         std::cerr << "Unknown trace format " << fmt << std::endl;
         exit(0);
@@ -355,10 +355,10 @@ tracer_type* build_tracer() {
         splitter = new bap::full_flags_splitter();
     } else {
         std::cerr << "Unknown flags_split option " << spl << std::endl;
-        delete tracer;
+        delete saver;
         exit(0);
     }
-    return new tracer_type(tracer, splitter);
+    return new tracer_type(saver, splitter);
 }
         
 int main(int argc, char *argv[]) {
