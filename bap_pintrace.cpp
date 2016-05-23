@@ -1,30 +1,12 @@
 #include <list>
 #include <set>
 #include <algorithm>
+#include <exception>
 #include <boost/algorithm/string.hpp>
 #include "pin.H"
-#include "text_saver.hpp"
-#include "frames_saver.hpp"
-#include "none_flags_splitter.hpp"
-#include "arch_size_flags_splitter.hpp"
-#include "full_flags_splitter.hpp"
+#include "tracer.hpp"
 
-struct tracer_type {
-    tracer_type(bap::saver<ADDRINT, THREADID>* saver,
-                bap::flags_splitter* splitter)
-        : saver_(saver)
-        , splitter_(splitter) {}
-    bap::saver<ADDRINT, THREADID>& save() { return *saver_; }
-    bap::flags_splitter& split() { return *splitter_; }
-    ~tracer_type() {
-        delete saver_;
-        delete splitter_;
-    }
-private:
-    bap::saver<ADDRINT, THREADID>* saver_;
-    bap::flags_splitter* splitter_;
-};
-
+typedef bap::tracer<ADDRINT, THREADID> tracer_type;
 namespace trace {
 
 std::string register_name(REG reg) {
@@ -332,41 +314,21 @@ INT32 usage() {
     return -1;
 }
 
-tracer_type* build_tracer() {
-    std::string fmt = format.Value();
-    std::string spl = split.Value();
-    std::string path = tracefile.Value();
-    bap::saver<ADDRINT, THREADID> *saver = 0;
-    if (fmt == "text") {
-        saver = new bap::text_saver<ADDRINT, THREADID>(path);
-    } else if (fmt == "frames") {
-        saver = new bap::frames_saver<ADDRINT, THREADID>(path);
-    } else {
-        std::cerr << "Unknown trace format " << fmt << std::endl;
-        exit(0);
-    }
-
-    bap::flags_splitter *splitter = 0;
-    if (spl == "none") {
-        splitter = new bap::none_flags_splitter();
-    } else if (spl == "arch") {
-        splitter = new bap::arch_size_flags_splitter<ADDRINT>();
-    } else if (spl == "full") {
-        splitter = new bap::full_flags_splitter();
-    } else {
-        std::cerr << "Unknown flags_split option " << spl << std::endl;
-        delete saver;
-        exit(0);
-    }
-    return new tracer_type(saver, splitter);
-}
-        
 int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
-
-    tracer_type *tracer = build_tracer();
-
+    tracer_type *tracer = 0;
+    try {
+        tracer = new tracer_type(format.Value(),
+                                 tracefile.Value(),
+                                 split.Value());
+    } catch(const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        exit(0);
+    } catch (...) {
+        std::cerr << "unexpected exception" << std::endl;
+        exit(0);
+    }
     INS_AddInstrumentFunction(instruction,
                               static_cast<VOID*>(tracer));
     PIN_AddFiniFunction(fini,
