@@ -7,7 +7,7 @@
 #include "tracer.hpp"
 
 typedef bap::tracer<ADDRINT, THREADID> tracer_type;
-namespace trace {
+namespace tool {
 
 std::string register_name(REG reg) {
     std::string name(REG_StringShort(reg));
@@ -159,8 +159,6 @@ void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
     m_mems.clear();
 }
 
-} //namespace trace
-
 VOID instruction_regs(const char* dis, INS ins, VOID* ptr) {
     IARGLIST regs_rd = IARGLIST_Alloc();
     IARGLIST regs_wr = IARGLIST_Alloc();
@@ -195,7 +193,7 @@ VOID instruction_regs(const char* dis, INS ins, VOID* ptr) {
         }
     }
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                             (AFUNPTR)(trace::register_read),
+                             (AFUNPTR)(register_read),
                              IARG_PTR, dis,
                              IARG_PTR, ptr,
                              IARG_CONTEXT,
@@ -203,7 +201,7 @@ VOID instruction_regs(const char* dis, INS ins, VOID* ptr) {
                              IARG_IARGLIST, regs_rd,
                              IARG_END);
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                             (AFUNPTR)(trace::remember_register_write),
+                             (AFUNPTR)(remember_register_write),
                              IARG_PTR, dis,
                              IARG_PTR, ptr,
                              IARG_UINT32, wr_count,
@@ -240,14 +238,14 @@ VOID instruction_mem(const char* dis, INS ins, VOID* ptr) {
     }
 
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                             (AFUNPTR)(trace::memory_load),
+                             (AFUNPTR)(memory_load),
                              IARG_PTR, ptr,
                              IARG_UINT32, ld_count,
                              IARG_IARGLIST, mem_ld,
                              IARG_END);
 
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                             (AFUNPTR)(trace::remember_memory_store),
+                             (AFUNPTR)(remember_memory_store),
                              IARG_PTR, ptr,
                              IARG_UINT32, st_count,
                              IARG_IARGLIST, mem_st,
@@ -257,9 +255,9 @@ VOID instruction_mem(const char* dis, INS ins, VOID* ptr) {
 }
 
 VOID instruction(INS ins, VOID* ptr) {
-    const char* dis = trace::disassemble(ins);
+    const char* dis = disassemble(ins);
     if (INS_HasRealRep(ins)) {
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(trace::code_exec),
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(code_exec),
                        IARG_PTR, ptr,
                        IARG_FIRST_REP_ITERATION,
                        IARG_CONTEXT,
@@ -269,7 +267,7 @@ VOID instruction(INS ins, VOID* ptr) {
                        IARG_THREAD_ID,
                        IARG_END);
     } else {
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(trace::code_exec),
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(code_exec),
                        IARG_PTR, ptr,
                        IARG_BOOL, true,
                        IARG_CONTEXT,
@@ -287,6 +285,9 @@ VOID fini(INT32 code, VOID* ptr) {
     tracer_type *tracer = static_cast<tracer_type*>(ptr);
     delete tracer;
 }
+
+} //namespace tool
+
 
 KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
                        "o", "trace.frames",
@@ -329,9 +330,9 @@ int main(int argc, char *argv[]) {
         std::cerr << "unexpected exception" << std::endl;
         exit(0);
     }
-    INS_AddInstrumentFunction(instruction,
+    INS_AddInstrumentFunction(tool::instruction,
                               static_cast<VOID*>(tracer));
-    PIN_AddFiniFunction(fini,
+    PIN_AddFiniFunction(tool::fini,
                         static_cast<VOID*>(tracer));
 
     // Never returns
