@@ -3,13 +3,30 @@
 #include <fstream>
 #include <vector>
 #include <list>
+#include <set>
 #include <cctype>
 #include <algorithm>
 #include "pin.H"
 #include "text_tracer.hpp"
 #include "frames_tracer.hpp"
+#include "none_flags_splitter.hpp"
 
-typedef bap::tracer<ADDRINT, THREADID> tracer_type;
+struct tracer_type {
+    tracer_type(bap::tracer<ADDRINT, THREADID>* saver,
+                bap::flags_splitter* splitter)
+        : saver_(saver)
+        , splitter_(splitter) {}
+    bap::tracer<ADDRINT, THREADID>& save() { return *saver_; }
+    bap::flags_splitter& split() { return *splitter_; }
+    ~tracer_type() {
+        delete saver_;
+        delete splitter_;
+    }
+private:
+    bap::tracer<ADDRINT, THREADID>* saver_;
+    bap::flags_splitter* splitter_;
+};
+
 namespace trace {
 
 std::string register_name(REG reg) {
@@ -19,21 +36,30 @@ std::string register_name(REG reg) {
     return name;
 }
 
+std::set<std::string> m_insns;
+const char* disassemble(INS insn) {
+    std::pair<std::set<std::string>::iterator, bool> ret =
+        m_insns.insert(INS_Disassemble(insn));
+    return ret.first->c_str();
+}
+
 void update_context(tracer_type* tracer, const CONTEXT*);
 void code_exec(tracer_type* tracer, BOOL cond, const CONTEXT* ctx,
                const char* dis, ADDRINT addr, UINT32 size,
                THREADID tid) {
     update_context(tracer, ctx);
     if (cond) {
-        tracer_type::data_type bytes(size);
+        bap::bytes_type bytes(size);
         PIN_SafeCopy(&bytes[0], (const void*) addr, size);
-        tracer->code_exec(dis, addr, bytes, tid);
+        tracer->save().code_exec(dis, addr, bytes, tid);
     }
 }
 
-std::list<REG> m_regs;
+std::list<std::pair<const char*, REG> > m_regs;
 
-void register_read(tracer_type* tracer, const CONTEXT *ctxt,
+void register_read(const char* dis,
+                   tracer_type* tracer,
+                   const CONTEXT *ctxt,
                    UINT32 values_count, ...) {
     va_list va;
     va_start(va, values_count);
@@ -43,33 +69,57 @@ void register_read(tracer_type* tracer, const CONTEXT *ctxt,
         if (REG_valid(reg)) {
             reg = REG_FullRegName(reg);
             UINT32 size = REG_Size(reg);
-            tracer_type::data_type data(size);
+            bap::bytes_type data(size);
             PIN_GetContextRegval(ctxt, reg,
                                  reinterpret_cast<UINT8*>(&data[0]));
-            tracer->register_read(register_name(reg), data);
+            if(REG_is_flags(reg)) {
+                bap::flags_type flags =
+                    tracer->split().read(dis, register_name(reg), data);
+                for(bap::flags_type::iterator i = flags.begin();
+                    i < flags.end(); ++i) {
+                    tracer->save().register_read(i->name, i->data,
+                                                 i->bitsize);
+                }
+            } else {
+                tracer->save().register_read(register_name(reg), data);
+            }
         }
     }
     va_end(va);
 }
 
-void remember_register_write(tracer_type*, UINT32 values_count, ...) {
+void remember_register_write(const char* dis,
+                             tracer_type*,
+                             UINT32 values_count, ...) {
     va_list va;
     va_start(va, values_count);
     for (UINT32 i=0; i < values_count; ++i) {
-        m_regs.push_back(static_cast<REG>(va_arg(va, UINT32)));
+        REG reg = static_cast<REG>(va_arg(va, UINT32));
+        m_regs.push_back(std::make_pair(dis, reg));
     }
     va_end(va);
 }
 
-void register_write(tracer_type* tracer,
+void register_write(const char* dis,
+                    tracer_type* tracer,
                     const CONTEXT *ctxt, REG reg) {
     if (REG_valid(reg)) {
         reg = REG_FullRegName(reg);
         UINT32 size = REG_Size(reg);
-        tracer_type::data_type data(size);
+        bap::bytes_type data(size);
         PIN_GetContextRegval(ctxt, reg,
                              reinterpret_cast<UINT8*>(&data[0]));
-        tracer->register_write(register_name(reg), data);
+        if(REG_is_flags(reg)) {
+            bap::flags_type flags =
+                tracer->split().write(dis, register_name(reg), data);
+                for(bap::flags_type::iterator i = flags.begin();
+                    i < flags.end(); ++i) {
+                    tracer->save().register_write(i->name, i->data,
+                                                  i->bitsize);
+                }
+        } else {
+            tracer->save().register_write(register_name(reg), data);
+        }
     }
 }
 
@@ -81,10 +131,10 @@ void memory_load(tracer_type* tracer, UINT32 values_count, ...) {
     for (UINT32 i=0; i < values_count; ++i) {
         ADDRINT addr = va_arg(va, ADDRINT);
         UINT32 size = va_arg(va, UINT32);
-        tracer_type::data_type data(size);
+        bap::bytes_type data(size);
         PIN_SafeCopy(static_cast<VOID*>(&data[0]),
                      reinterpret_cast<VOID*>(addr), size);
-        tracer->memory_load(addr, data);
+        tracer->save().memory_load(addr, data);
     }
     va_end(va);
 }
@@ -101,16 +151,17 @@ void remember_memory_store(tracer_type*, UINT32 values_count, ...) {
 }
 
 void memory_store(tracer_type* tracer, ADDRINT addr, UINT32 size) {
-    tracer_type::data_type data(size);
+    bap::bytes_type data(size);
     PIN_SafeCopy(static_cast<VOID*>(&data[0]),
                  reinterpret_cast<VOID*>(addr), size);
-    tracer->memory_store(addr, data);
+    tracer->save().memory_store(addr, data);
 }
 
 void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
-    for (std::list<REG>::const_iterator r = m_regs.begin();
+    for (std::list<std::pair<const char*, REG> >::const_iterator r =
+             m_regs.begin();
          r != m_regs.end(); ++r) {
-        register_write(tracer, ctxt, *r);
+        register_write(r->first, tracer, ctxt, r->second);
     }
     m_regs.clear();
     for (std::list< std::pair<ADDRINT, UINT32> >::const_iterator m =
@@ -122,11 +173,12 @@ void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
 
 } //namespace trace
 
-VOID instruction_regs(INS ins, VOID* ptr) {
+VOID instruction_regs(const char* dis, INS ins, VOID* ptr) {
     IARGLIST regs_rd = IARGLIST_Alloc();
     IARGLIST regs_wr = IARGLIST_Alloc();
     UINT32 rd_count = 0;
     UINT32 wr_count = 0;
+        
     for (UINT32 i = 0, I = INS_OperandCount(ins); i < I; ++i) {
         if (INS_OperandIsReg(ins, i) && INS_OperandRead(ins, i)) {
             IARGLIST_AddArguments(
@@ -156,6 +208,7 @@ VOID instruction_regs(INS ins, VOID* ptr) {
     }
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(trace::register_read),
+                             IARG_PTR, dis,
                              IARG_PTR, ptr,
                              IARG_CONTEXT,
                              IARG_UINT32, rd_count,
@@ -163,6 +216,7 @@ VOID instruction_regs(INS ins, VOID* ptr) {
                              IARG_END);
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(trace::remember_register_write),
+                             IARG_PTR, dis,
                              IARG_PTR, ptr,
                              IARG_UINT32, wr_count,
                              IARG_IARGLIST, regs_wr,
@@ -171,7 +225,7 @@ VOID instruction_regs(INS ins, VOID* ptr) {
     IARGLIST_Free(regs_wr);
 }
 
-VOID instruction_mem(INS ins, VOID* ptr) {
+VOID instruction_mem(const char* dis, INS ins, VOID* ptr) {
     IARGLIST mem_ld = IARGLIST_Alloc();
     IARGLIST mem_st = IARGLIST_Alloc();
     UINT32 ld_count = 0;
@@ -215,13 +269,13 @@ VOID instruction_mem(INS ins, VOID* ptr) {
 }
 
 VOID instruction(INS ins, VOID* ptr) {
-    std::string *dis = new std::string(INS_Disassemble(ins));
+    const char* dis = trace::disassemble(ins);
     if (INS_HasRealRep(ins)) {
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(trace::code_exec),
                        IARG_PTR, ptr,
                        IARG_FIRST_REP_ITERATION,
                        IARG_CONTEXT,
-                       IARG_PTR, dis->c_str(),
+                       IARG_PTR, dis,
                        IARG_INST_PTR,
                        IARG_UINT32, INS_Size(ins),
                        IARG_THREAD_ID,
@@ -231,14 +285,14 @@ VOID instruction(INS ins, VOID* ptr) {
                        IARG_PTR, ptr,
                        IARG_BOOL, true,
                        IARG_CONTEXT,
-                       IARG_PTR, dis->c_str(),
+                       IARG_PTR, dis,
                        IARG_INST_PTR,
                        IARG_UINT32, INS_Size(ins),
                        IARG_THREAD_ID,
                        IARG_END);
     }
-    instruction_regs(ins, ptr);
-    instruction_mem(ins, ptr);
+    instruction_regs(dis, ins, ptr);
+    instruction_mem(dis, ins, ptr);
 }
 
 VOID fini(INT32 code, VOID* ptr) {
@@ -254,6 +308,15 @@ KNOB<string> format(KNOB_MODE_WRITEONCE, "pintool",
                     "fmt", "frames",
                     "Trace output format (text | frames).");
 
+KNOB<string> split(KNOB_MODE_WRITEONCE, "pintool",
+                   "split-flags", "none",
+                   "Split flags to bits and trace it "
+                   "as independed bits. Valid values:\n"
+                   "\t none - disable splitting \n"
+                   "\t all - split all flags bits \n"
+                   "\t insn - trace only "
+                   "instruction used flags bits.");
+
 
 INT32 usage() {
     PIN_ERROR( "This Pintool trace "
@@ -264,8 +327,9 @@ INT32 usage() {
 
 tracer_type* build_tracer() {
     std::string fmt = format.Value();
+    std::string spl = split.Value();
     std::string path = tracefile.Value();
-    tracer_type *tracer = 0;
+    bap::tracer<ADDRINT, THREADID> *tracer = 0;
     if (fmt == "text") {
         tracer = new bap::text_tracer<ADDRINT, THREADID>(path);
     } else if (fmt == "frames") {
@@ -274,7 +338,16 @@ tracer_type* build_tracer() {
         std::cerr << "Unknown trace format " << fmt << std::endl;
         exit(0);
     }
-    return tracer;
+
+    bap::flags_splitter *splitter = 0;
+    if (spl == "none") {
+        splitter = new bap::none_flags_splitter();
+    } else {
+        std::cerr << "Unknown flags_split option " << spl << std::endl;
+        delete tracer;
+        exit(0);
+    }
+    return new tracer_type(tracer, splitter);
 }
         
 int main(int argc, char *argv[]) {

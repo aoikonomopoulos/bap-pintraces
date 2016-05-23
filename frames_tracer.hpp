@@ -10,7 +10,6 @@ namespace trc = SerializedTrace;
 
 template <typename addr_type, typename thread>
 struct frames_tracer : tracer<addr_type, thread> {
-    typedef typename tracer<addr_type, thread>::data_type data_type;
     static const frame_architecture arch = frame_arch_i386;
 #if defined(TARGET_IA32)
     static const uint64_t machine = frame_mach_i386_i386
@@ -25,26 +24,28 @@ struct frames_tracer : tracer<addr_type, thread> {
 
     void code_exec(const std::string& dis,
                    addr_type addr,
-                   const data_type& bytes,
+                   const bytes_type& bytes,
                    thread tid) {
         current.reset(new holder(*this, addr, bytes, tid));
     }
 
-    void memory_load(addr_type addr, const data_type& data) {
+    void memory_load(addr_type addr, const bytes_type& data) {
         current->mem_operand(R, addr, data);
     }
 
-    void memory_store(addr_type addr, const data_type& data) {
+    void memory_store(addr_type addr, const bytes_type& data) {
         current->mem_operand(W, addr, data);
     }
 
     void register_read(const std::string& name,
-                       const data_type& data) {
+                       const bytes_type& data,
+                       int bitsize) {
         current->reg_operand(R, name, data);
     }
 
     void register_write(const std::string& name,
-                        const data_type& data) {
+                        const bytes_type& data,
+                        int bitsize) {
         current->reg_operand(W, name, data);
     }
 
@@ -55,7 +56,7 @@ struct frames_tracer : tracer<addr_type, thread> {
 private:
     struct holder {
         holder(frames_tracer& p,
-               addr_type addr, const data_type& bytes, thread tid)
+               addr_type addr, const bytes_type& bytes, thread tid)
             : parent(p) {
             ::std_frame* sf = frm.mutable_std_frame();
             sf->set_address(addr);
@@ -66,14 +67,14 @@ private:
         }
 
         void mem_operand(usage u, addr_type addr,
-                         const data_type& data) {
+                         const bytes_type& data) {
             ::operand_info_specific* ois = add_operand(u, data);
             ::mem_operand* mo = ois->mutable_mem_operand();
             mo->set_address(addr);
         }
 
         void reg_operand(usage u, const std::string& name,
-                         const data_type& data) {
+                         const bytes_type& data) {
             ::operand_info_specific* ois = add_operand(u, data);
             ::reg_operand* ro = ois->mutable_reg_operand();
             ro->set_name(name);
@@ -84,7 +85,7 @@ private:
         }
     private:
         ::operand_info_specific* add_operand(usage u,
-                                             const data_type& data) {
+                                             const bytes_type& data) {
             ::std_frame* sf = frm.mutable_std_frame();
             ::operand_value_list* ovl = 0;
             switch(u) {

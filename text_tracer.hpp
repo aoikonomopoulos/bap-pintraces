@@ -38,7 +38,7 @@ private:
 };
 
 std::ostream& print_code(std::ostream& out,
-                         const std::vector<char>& bytes,
+                         const bytes_type& bytes,
                          const std::string& sep) {
     std::accumulate(bytes.begin(), bytes.end(),
                     std::string(""), code_printer(out, sep));
@@ -46,9 +46,10 @@ std::ostream& print_code(std::ostream& out,
 }
 
 std::ostream& print_data(std::ostream& out,
-                         const std::vector<char>& data) {
+                         const bytes_type& data,
+                         int bitsize) {
 
-    std::vector<char>::const_reverse_iterator it =
+    bytes_type::const_reverse_iterator it =
         std::find_if(data.rbegin(), data.rend(),
                      std::bind1st(std::not_equal_to<char>(), 0));
     if (it != data.rend()) {
@@ -58,7 +59,7 @@ std::ostream& print_data(std::ostream& out,
     } else {
         out << "0x0";
     }
-    out << ":" << (data.size()*8);
+    out << ":" << (bitsize == 0 ? data.size()*8 : bitsize);
     return out;
 }
 
@@ -74,13 +75,12 @@ std::ostream& print_addr(std::ostream& out, const T& addr) {
 
 template <typename addr_type, typename thread>
 struct text_tracer : tracer<addr_type, thread> {
-    typedef typename tracer<addr_type, thread>::data_type data_type;
     explicit text_tracer(const std::string& path)
         : out(path.c_str(), std::ofstream::out) {}
 
     void code_exec(const std::string& dis,
                    addr_type addr,
-                   const data_type& bytes,
+                   const bytes_type& bytes,
                    thread tid) {
         out << "ins(" << tid << ", ";
         print_addr(out, addr);
@@ -89,22 +89,24 @@ struct text_tracer : tracer<addr_type, thread> {
         out << "] -> " << dis << std::endl;
     }
 
-    void memory_load(addr_type addr, const data_type& data) {
+    void memory_load(addr_type addr, const bytes_type& data) {
         memory_io(" => ", addr, data);
     }
 
-    void memory_store(addr_type addr, const data_type& data) {
+    void memory_store(addr_type addr, const bytes_type& data) {
         memory_io(" <= ", addr, data);
     }
 
     void register_read(const std::string& name,
-                       const data_type& data) {
-        register_io( " => ", name, data);
+                       const bytes_type& data,
+                       int bitsize) {
+        register_io( " => ", name, data, bitsize);
     }
 
     void register_write(const std::string& name,
-                        const data_type& data) {
-        register_io( " <= ", name, data);
+                        const bytes_type& data,
+                        int bitsize) {
+        register_io( " <= ", name, data, bitsize);
     }
 
     ~text_tracer() {
@@ -112,17 +114,18 @@ struct text_tracer : tracer<addr_type, thread> {
     }
 private:
     void memory_io(const std::string& dir, addr_type addr,
-                const data_type& data) {
+                const bytes_type& data) {
         print_addr(out, addr);
         out << dir;
-        print_data(out, data);
+        print_data(out, data, 0);
         out << std::endl;
     }
 
     void register_io(const std::string& dir, const std::string name,
-                     const data_type& data) {
+                     const bytes_type& data,
+                     int bitsize) {
         out << name << dir;
-        print_data(out, data);
+        print_data(out, data, bitsize);
         out << std::endl;
     }
 
