@@ -8,9 +8,9 @@
 namespace bap {
 
 struct flag {
-    const std::string name;
-    const bytes_type data;
-    const int bitsize;
+    std::string name;
+    bytes_type data;
+    int bitsize;
 };
 
 typedef std::vector<flag> flags_type;

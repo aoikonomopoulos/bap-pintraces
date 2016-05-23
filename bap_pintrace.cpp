@@ -11,6 +11,7 @@
 #include "frames_tracer.hpp"
 #include "none_flags_splitter.hpp"
 #include "arch_size_flags_splitter.hpp"
+#include "full_flags_splitter.hpp"
 
 struct tracer_type {
     tracer_type(bap::tracer<ADDRINT, THREADID>* saver,
@@ -315,7 +316,7 @@ KNOB<string> split(KNOB_MODE_WRITEONCE, "pintool",
                    "as independed bits. Valid values:\n"
                    "\t none - disable splitting \n"
                    "\t arch - grow flags size to GR size\n"
-                   "\t all - split all flags bits \n"
+                   "\t full - split all flags bits \n"
                    "\t insn - trace only "
                    "instruction used flags bits.");
 
@@ -346,6 +347,8 @@ tracer_type* build_tracer() {
         splitter = new bap::none_flags_splitter();
     } else if (spl == "arch") {
         splitter = new bap::arch_size_flags_splitter<ADDRINT>();
+    } else if (spl == "full") {
+        splitter = new bap::full_flags_splitter();
     } else {
         std::cerr << "Unknown flags_split option " << spl << std::endl;
         delete tracer;
