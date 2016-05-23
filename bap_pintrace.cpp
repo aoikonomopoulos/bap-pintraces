@@ -1,11 +1,7 @@
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <vector>
 #include <list>
 #include <set>
-#include <cctype>
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include "pin.H"
 #include "text_tracer.hpp"
 #include "frames_tracer.hpp"
@@ -33,8 +29,7 @@ namespace trace {
 
 std::string register_name(REG reg) {
     std::string name(REG_StringShort(reg));
-    std::transform(name.begin(), name.end(), name.begin(),
-                   ::toupper);
+    boost::algorithm::to_upper(name);
     return name;
 }
 
@@ -57,7 +52,8 @@ void code_exec(tracer_type* tracer, BOOL cond, const CONTEXT* ctx,
     }
 }
 
-std::list<std::pair<const char*, REG> > m_regs;
+typedef std::list<std::pair<const char*, REG> > regs_type;
+regs_type m_regs;
 
 void register_read(const char* dis,
                    tracer_type* tracer,
@@ -125,7 +121,8 @@ void register_write(const char* dis,
     }
 }
 
-std::list< std::pair<ADDRINT, UINT32> > m_mems;
+typedef std::list< std::pair<ADDRINT, UINT32> > mems_type;
+mems_type m_mems;
 
 void memory_load(tracer_type* tracer, UINT32 values_count, ...) {
     va_list va;
@@ -160,16 +157,23 @@ void memory_store(tracer_type* tracer, ADDRINT addr, UINT32 size) {
 }
 
 void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
-    for (std::list<std::pair<const char*, REG> >::const_iterator r =
-             m_regs.begin();
-         r != m_regs.end(); ++r) {
-        register_write(r->first, tracer, ctxt, r->second);
-    }
+    std::for_each(
+        boost::begin(m_regs),
+        boost::end(m_regs),
+        boost::bind(register_write,
+                    boost::bind(&regs_type::value_type::first, _1),
+                    tracer,
+                    ctxt,
+                    boost::bind(&regs_type::value_type::second, _1)));
     m_regs.clear();
-    for (std::list< std::pair<ADDRINT, UINT32> >::const_iterator m =
-             m_mems.begin(); m != m_mems.end(); ++m) {
-        memory_store(tracer, m->first, m->second);
-    }
+
+    std::for_each(
+        boost::begin(m_mems),
+        boost::end(m_mems),
+        boost::bind(memory_store,
+                    tracer,
+                    boost::bind(&mems_type::value_type::first, _1),
+                    boost::bind(&mems_type::value_type::second, _1)));
     m_mems.clear();
 }
 

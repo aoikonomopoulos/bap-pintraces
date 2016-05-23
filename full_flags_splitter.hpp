@@ -2,6 +2,9 @@
 #define BAP_PIN_TRACER_FULL_FLAGS_SPLITTER_HPP
 
 #include <algorithm>
+#include <iterator>
+#include <boost/range.hpp>
+#include <boost/bind.hpp>
 #include "flags_splitter.hpp"
 
 namespace bap {
@@ -52,14 +55,15 @@ private:
             {"DF", 10},
             {"OF", 11}
         };
-        int size = sizeof(descr)/sizeof(flags_descr);
         flags_type flags;
-        flags.reserve(size);
-        for (flags_descr *first = descr,
-                 *last = descr + size;
-             first != last; ++first) {
-            flags.push_back(get_flag(*first, data));
-        }
+        flags.reserve(std::distance(boost::begin(descr),
+                                    boost::end(descr)) + 1);
+        flag f = {name, bytes_type(data), data.size()*8};
+        flags.push_back(f);
+        std::transform(boost::begin(descr),
+                       boost::end(descr),
+                       std::back_inserter(flags),
+                       boost::bind(&get_flag, _1, data));
         return flags;
     }
 };

@@ -1,6 +1,7 @@
 #ifndef BAP_PIN_FRAMES_TRACER_HPP
 #define BAP_PIN_FRAMES_TRACER_HPP
 #include <memory>
+#include <boost/scoped_ptr.hpp>
 #include <libtrace/trace.container.hpp>
 #include "tracer.hpp"
 
@@ -110,7 +111,7 @@ private:
 
 private:
     trc::TraceContainerWriter out;
-    std::auto_ptr<holder> current;
+    boost::scoped_ptr<holder> current;
 };
 
 }
