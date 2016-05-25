@@ -21,9 +21,10 @@ struct tracer {
     splitter_type& split() { return *splitter_; }
     tracer(const std::string& fmt,
            const std::string& path,
-           const std::string& split)
+           const std::string& split,
+           bool rflags)
         : saver_(create_saver(fmt, path))
-        , splitter_(create_splitter(split)) {}
+        , splitter_(create_splitter(split, rflags)) {}
 
 private:
     static saver_type* create_saver(const std::string& fmt,
@@ -36,15 +37,16 @@ private:
             throw std::invalid_argument("unknown trace format " + fmt);
     }
 
-    static splitter_type* create_splitter(const std::string& split) {
+    static splitter_type* create_splitter(const std::string& split,
+                                          bool rflags) {
         if ("none" == split)
             return new none_flags_splitter();
         else if ("arch" == split)
             return new arch_size_flags_splitter<addr_type>();
         else if ("full" == split)
-            return new full_flags_splitter();
+            return new full_flags_splitter(rflags);
         else if ("insn" == split)
-            return new insn_flags_splitter();
+            return new insn_flags_splitter(rflags);
         else
             throw std::invalid_argument("unknown split format " + split);
     }

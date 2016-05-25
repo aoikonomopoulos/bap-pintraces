@@ -21,6 +21,7 @@ map_type make_map() {
 const map_type m_map(make_map());
 
 struct insn_flags_splitter : flags_splitter {
+    explicit insn_flags_splitter(bool rflags) : rflags_(rflags) {}
     flags_type read(const std::string& dis,
                     const std::string& name,
                     const bytes_type& data) {
@@ -72,16 +73,18 @@ private:
         flags_type flags;
         flags.reserve(std::distance(boost::begin(items),
                                     boost::end(items)) + 1);
-        flag f = {name, bytes_type(data), data.size()*8};
-        flags.push_back(f);
-        
+        if (rflags_) {
+            flag f = {name, bytes_type(data), data.size()*8};
+            flags.push_back(f);
+        }
         std::transform(boost::begin(items),
                        boost::end(items),
                        std::back_inserter(flags),
                        boost::bind(&get_flag_2, _1, data));
         return flags;
     }
-
+private:
+    bool rflags_;
 };
 
 } //namespace bap

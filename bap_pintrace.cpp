@@ -19,6 +19,9 @@ KNOB<string> split(KNOB_MODE_WRITEONCE, "pintool",
                    "\t insn - trace only "
                    "instruction used flags bits.");
 
+KNOB<bool> rflags(KNOB_MODE_WRITEONCE, "pintool",
+                   "enable-rflags", "false",
+                  "Disable trace RFLAGS register on split");
 
 INT32 usage() {
     PIN_ERROR( "This Pintool trace "
@@ -34,7 +37,8 @@ int main(int argc, char *argv[]) {
     try {
         tracer = new tracer_type(format.Value(),
                                  tracefile.Value(),
-                                 split.Value());
+                                 split.Value(),
+                                 rflags.Value());
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         exit(0);

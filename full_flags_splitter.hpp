@@ -10,6 +10,7 @@
 namespace bap {
 
 struct full_flags_splitter : flags_splitter {
+    explicit full_flags_splitter(bool rflags) : rflags_(rflags) {}
     flags_type read(const std::string&,
                     const std::string& name,
                     const bytes_type& data) {
@@ -28,14 +29,18 @@ private:
         flags_type flags;
         flags.reserve(std::distance(boost::begin(descr),
                                     boost::end(descr)) + 1);
-        flag f = {name, bytes_type(data), data.size()*8};
-        flags.push_back(f);
+        if (rflags_) {
+            flag f = {name, bytes_type(data), data.size()*8};
+            flags.push_back(f);
+        }
         std::transform(boost::begin(descr),
                        boost::end(descr),
                        std::back_inserter(flags),
                        boost::bind(&get_flag, _1, data));
         return flags;
     }
+private:
+    bool rflags_;
 };
 
 } //namespace bap
