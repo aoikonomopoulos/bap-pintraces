@@ -1,8 +1,3 @@
-#if defined(tline)
-#undef tline
-#endif
-
-
 #if defined(BAP_PINTRACER_DECLARE_INSN)
 #define tline(insn, ...) insn
 #elif defined(BAP_PIN_TRACER_DECLARE_INSN_FLAGS)
@@ -13,9 +8,6 @@
 #error "no action defined"
 #endif
 
-#if defined(tbwdq)
-#undef tbwdq
-#endif
 #define tbwdq(insn, ...) \
         tline(insn, __VA_ARGS__), \
         tline(insn ## B, __VA_ARGS__), \
@@ -23,28 +15,18 @@
         tline(insn ## D, __VA_ARGS__), \
         tline(insn ## Q, __VA_ARGS__)
 
-#if defined(tbwd_)
-#undef tbwd_
-#endif
 #define tbwd_(insn, ...) \
         tline(insn, __VA_ARGS__), \
         tline(insn ## B, __VA_ARGS__), \
         tline(insn ## W, __VA_ARGS__), \
         tline(insn ## D, __VA_ARGS__)
 
-#if defined(t__dq)
-#undef t__dq
-#endif
 #define t__dq(insn, ...) \
         tline(insn, __VA_ARGS__), \
         tline(insn ## D, __VA_ARGS__), \
         tline(insn ## Q, __VA_ARGS__)
 
-#if defined(t__cc)
-#undef t__cc
-#endif
-#define t_cc(insn, ...) \
-//      INSN,  ID, VIP, VIF,  AC,  VM,  RF,  NT, IOPL,  OF,  DF,  IF,  TF,  SF,  ZF,  AF,  PF,  CF \
+#define t__cc(insn, ...) \
   tline(  insn ## O,   N,   N,   N,   N,   N,   N,   N,    N, TST,   N,   N,   N,   N,   N,   N,   N,   N), \
   tline( insn ## NO,   N,   N,   N,   N,   N,   N,   N,    N, TST,   N,   N,   N,   N,   N,   N,   N,   N), \
   tline(  insn ## B,   N,   N,   N,   N,   N,   N,   N,    N,   N,   N,   N,   N,   N,   N,   N,   N, TST), \
@@ -179,6 +161,8 @@ tline(   VERW,   N,   N,   N,   N,   N,   N,   N,    N,   N,   N,   N,   N,   N,
 tline(   XADD,   N,   N,   N,   N,   N,   N,   N,    N, MOD,   N,   N,   N, MOD, MOD, MOD, MOD, MOD),
 tline(    XOR,   N,   N,   N,   N,   N,   N,   N,    N, CLR,   N,   N,   N, MOD, MOD, UND, MOD, CLR),
 
-
-
-
+#undef tline
+#undef tbwdq
+#undef tbwd_
+#undef t__dq
+#undef t__cc

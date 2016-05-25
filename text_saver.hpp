@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <functional>
 #include "saver.hpp"
-
+#include "insn_name.hpp"
 namespace bap {
 
 namespace {
@@ -82,7 +82,7 @@ struct text_saver : saver<addr_type, thread> {
                    addr_type addr,
                    const bytes_type& bytes,
                    thread tid) {
-        out << "ins(" << tid << ", ";
+        out << insn_name(dis) << "(" << tid << ", ";
         print_addr(out, addr);
         out << ") : [";
         print_code(out, bytes, ", ");

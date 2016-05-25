@@ -6,8 +6,10 @@
 #include "text_saver.hpp"
 #include "frames_saver.hpp"
 #include "none_flags_splitter.hpp"
+#include "insn_flags.hpp"
 #include "arch_size_flags_splitter.hpp"
 #include "full_flags_splitter.hpp"
+#include "insn_flags_splitter.hpp"
 
 namespace bap {
 
@@ -41,6 +43,8 @@ private:
             return new arch_size_flags_splitter<addr_type>();
         else if ("full" == split)
             return new full_flags_splitter();
+        else if ("insn" == split)
+            return new insn_flags_splitter();
         else
             throw std::invalid_argument("unknown split format " + split);
     }

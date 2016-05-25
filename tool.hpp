@@ -2,6 +2,7 @@
 #define BAP_PIN_TOOL_HPP
 #include <set>
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include "pin.H"
 #include "tracer.hpp"
 #include "tool_reg.hpp"
@@ -13,8 +14,10 @@ namespace tool {
 
 const char* disassemble(INS insn) {
     static std::set<std::string> insns;
+    std::string dis = INS_Disassemble(insn);
+    boost::algorithm::to_upper(dis);
     std::pair<std::set<std::string>::iterator, bool> ret =
-        insns.insert(INS_Disassemble(insn));
+        insns.insert(dis);
     return ret.first->c_str();
 }
 

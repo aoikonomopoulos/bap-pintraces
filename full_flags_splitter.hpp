@@ -6,29 +6,8 @@
 #include <boost/range.hpp>
 #include <boost/bind.hpp>
 #include "flags_splitter.hpp"
-
+#include "insn_flags.hpp"
 namespace bap {
-
-namespace {
-
-inline bool get_bit(const bytes_type& bytes, int pos) {
-    int byte = pos/8;
-    int bit = pos%8;
-    return (bytes[byte] >> bit) & 0x1;
-}
-
-struct flags_descr {
-    const char* name;
-    int pos;
-};
-
-inline flag get_flag(const flags_descr& descr,
-                     const bytes_type& data) {
-    flag f = {descr.name, bytes_type(1, get_bit(data, descr.pos)), 1};
-    return f;
-}
-
-} //namespace
 
 struct full_flags_splitter : flags_splitter {
     flags_type read(const std::string&,
@@ -46,15 +25,6 @@ struct full_flags_splitter : flags_splitter {
 private:
     flags_type make(const std::string& name,
                     const bytes_type& data) {
-        static flags_descr descr [] = {
-            {"CF", 0},
-            {"PF", 2},
-            {"AF", 4},
-            {"ZF", 6},
-            {"SF", 7},
-            {"DF", 10},
-            {"OF", 11}
-        };
         flags_type flags;
         flags.reserve(std::distance(boost::begin(descr),
                                     boost::end(descr)) + 1);

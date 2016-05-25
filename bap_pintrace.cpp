@@ -10,7 +10,7 @@ KNOB<string> format(KNOB_MODE_WRITEONCE, "pintool",
                     "Trace output format (text | frames).");
 
 KNOB<string> split(KNOB_MODE_WRITEONCE, "pintool",
-                   "split-flags", "none",
+                   "split-flags", "insn",
                    "Split flags to bits and trace it "
                    "as independed bits. Valid values:\n"
                    "\t none - disable splitting \n"
