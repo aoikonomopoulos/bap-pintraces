@@ -41,13 +41,13 @@ struct frames_saver : saver<addr_type, thread> {
     void register_read(const std::string& name,
                        const bytes_type& data,
                        int bitsize) {
-        current->reg_operand(R, name, data);
+        current->reg_operand(R, name, data, bitsize);
     }
 
     void register_write(const std::string& name,
                         const bytes_type& data,
                         int bitsize) {
-        current->reg_operand(W, name, data);
+        current->reg_operand(W, name, data, bitsize);
     }
 
     ~frames_saver() {
@@ -75,8 +75,8 @@ private:
         }
 
         void reg_operand(usage u, const std::string& name,
-                         const bytes_type& data) {
-            ::operand_info_specific* ois = add_operand(u, data);
+                         const bytes_type& data, int bitsize) {
+            ::operand_info_specific* ois = add_operand(u, data, bitsize);
             ::reg_operand* ro = ois->mutable_reg_operand();
             ro->set_name(name);
         }
@@ -86,7 +86,8 @@ private:
         }
     private:
         ::operand_info_specific* add_operand(usage u,
-                                             const bytes_type& data) {
+                                             const bytes_type& data,
+                                             int bitsize = 0) {
             ::std_frame* sf = frm.mutable_std_frame();
             ::operand_value_list* ovl = 0;
             switch(u) {
@@ -94,7 +95,7 @@ private:
             case W: ovl = sf->mutable_operand_post_list(); break;
             }
             ::operand_info* oi = ovl->add_elem();
-            oi->set_bit_length(8*data.size());
+            oi->set_bit_length(bitsize == 0 ? 8*data.size() : bitsize);
             ::operand_usage* ou = oi->mutable_operand_usage();
             ou->set_read(u == R);
             ou->set_written(u == W);
