@@ -151,14 +151,14 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
             ++wr_count;
         }
     }
-    INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                             (AFUNPTR)(read),
-                             IARG_PTR, dis,
-                             IARG_PTR, ptr,
-                             IARG_CONTEXT,
-                             IARG_UINT32, rd_count,
-                             IARG_IARGLIST, regs_rd,
-                             IARG_END);
+    INS_InsertCall(ins, IPOINT_BEFORE,
+                   (AFUNPTR)(read),
+                   IARG_PTR, dis,
+                   IARG_PTR, ptr,
+                   IARG_CONTEXT,
+                   IARG_UINT32, rd_count,
+                   IARG_IARGLIST, regs_rd,
+                   IARG_END);
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(remember_write),
                              IARG_PTR, dis,

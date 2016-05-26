@@ -83,12 +83,12 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
         }
     }
 
-    INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                             (AFUNPTR)(load),
-                             IARG_PTR, ptr,
-                             IARG_UINT32, ld_count,
-                             IARG_IARGLIST, mem_ld,
-                             IARG_END);
+    INS_InsertCall(ins, IPOINT_BEFORE,
+                   (AFUNPTR)(load),
+                   IARG_PTR, ptr,
+                   IARG_UINT32, ld_count,
+                   IARG_IARGLIST, mem_ld,
+                   IARG_END);
 
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(remember_store),
