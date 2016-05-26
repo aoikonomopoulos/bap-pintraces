@@ -58,7 +58,9 @@ struct insn_flags_splitter : flags_splitter {
                 case MOD:
                 case POP:
                 case UND:
-                case M_U: items.push_back(static_cast<flags>(j)); break;
+                case M_U:
+                case T_M:
+                case T_P: items.push_back(static_cast<flags>(j)); break;
                 default: break;
                 }
             }
