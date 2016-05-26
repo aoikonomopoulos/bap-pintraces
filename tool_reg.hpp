@@ -123,14 +123,18 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
 
         if (INS_OperandIsMemory(ins, i) ||
             INS_OperandIsAddressGenerator(ins, i)) {
+            REG seg = INS_OperandMemorySegmentReg(ins, i);
             REG base = INS_OperandMemoryBaseReg(ins, i);
             REG index = INS_OperandMemoryIndexReg(ins, i);
             IARGLIST_AddArguments(
                 regs_rd,
+                IARG_UINT32, (seg == REG_SEG_FS ? REG_SEG_FS_BASE :
+                              seg == REG_SEG_GS ? REG_SEG_GS_BASE :
+                              REG_INVALID()),
                 IARG_UINT32, base,
                 IARG_UINT32, index,
                 IARG_END);
-            rd_count += 2;
+            rd_count += 3;
             if (INS_RegWContain(ins, base)) {
                 IARGLIST_AddArguments(
                     regs_wr,
@@ -155,21 +159,6 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
                 IARG_END);
             ++wr_count;
         }
-    }
-
-    if (INS_SegmentPrefix(ins)) {
-        REG seg = INS_SegmentRegPrefix(ins);
-        REG base =
-            seg == REG_SEG_FS ? REG_SEG_FS_BASE
-            : seg == REG_SEG_GS ?
-            REG_SEG_GS_BASE :
-            REG_INVALID();
-
-        IARGLIST_AddArguments(
-            regs_rd,
-            IARG_UINT32, base,
-            IARG_END);
-        ++rd_count;
     }
 
     INS_InsertCall(ins, IPOINT_BEFORE,
