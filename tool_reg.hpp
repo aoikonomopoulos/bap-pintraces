@@ -13,9 +13,14 @@ namespace tool { namespace reg {
 
 static bool enable_rip = false;
 std::string register_name(REG reg) {
-    std::string name(REG_StringShort(reg));
-    boost::algorithm::to_upper(name);
-    return name;
+    switch(reg) {
+    case REG_SEG_FS_BASE: return "FS_BASE";
+    case REG_SEG_GS_BASE: return "GS_BASE";
+    default:
+        std::string name(REG_StringShort(reg));
+        boost::algorithm::to_upper(name);
+        return name;
+    }
 }
 
 typedef std::list<std::pair<const char*, REG> > regs_type;
@@ -151,6 +156,22 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
             ++wr_count;
         }
     }
+
+    if (INS_SegmentPrefix(ins)) {
+        REG seg = INS_SegmentRegPrefix(ins);
+        REG base =
+            seg == REG_SEG_FS ? REG_SEG_FS_BASE
+            : seg == REG_SEG_GS ?
+            REG_SEG_GS_BASE :
+            REG_INVALID();
+
+        IARGLIST_AddArguments(
+            regs_rd,
+            IARG_UINT32, base,
+            IARG_END);
+        ++rd_count;
+    }
+
     INS_InsertCall(ins, IPOINT_BEFORE,
                    (AFUNPTR)(read),
                    IARG_PTR, dis,
