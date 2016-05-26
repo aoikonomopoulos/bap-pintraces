@@ -21,7 +21,9 @@ map_type make_map() {
 const map_type m_map(make_map());
 
 struct insn_flags_splitter : flags_splitter {
-    explicit insn_flags_splitter(bool rflags) : rflags_(rflags) {}
+    insn_flags_splitter(bool rflags, bool uflags)
+        : rflags_(rflags)
+        , uflags_(uflags)  {}
     flags_type read(const std::string& dis,
                     const std::string& name,
                     const bytes_type& data) {
@@ -57,10 +59,12 @@ struct insn_flags_splitter : flags_splitter {
                 case AH:
                 case MOD:
                 case POP:
-                case UND:
                 case M_U:
                 case T_M:
                 case T_P: items.push_back(static_cast<flags>(j)); break;
+                case UND:
+                    if(uflags_) items.push_back(static_cast<flags>(j));
+                    break;
                 default: break;
                 }
             }
@@ -87,6 +91,7 @@ private:
     }
 private:
     bool rflags_;
+    bool uflags_;
 };
 
 } //namespace bap

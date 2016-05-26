@@ -27,6 +27,11 @@ KNOB<bool> rip(KNOB_MODE_WRITEONCE, "pintool",
                "enable-rip", "false",
                "Enable trace rIP register");
 
+KNOB<bool> uflags(KNOB_MODE_WRITEONCE, "pintool",
+                  "enable-undefined-flags", "false",
+                  "Enable trace undefined rflags values");
+
+
 INT32 usage() {
     PIN_ERROR( "This Pintool trace "
                "instructions memory and registers usage\n"
@@ -42,7 +47,8 @@ int main(int argc, char *argv[]) {
         tracer = new tracer_type(format.Value(),
                                  tracefile.Value(),
                                  split.Value(),
-                                 rflags.Value());
+                                 rflags.Value(),
+                                 uflags.Value());
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         exit(0);

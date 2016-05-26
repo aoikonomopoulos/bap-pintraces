@@ -22,9 +22,10 @@ struct tracer {
     tracer(const std::string& fmt,
            const std::string& path,
            const std::string& split,
-           bool rflags)
+           bool rflags,
+           bool uflags)
         : saver_(create_saver(fmt, path))
-        , splitter_(create_splitter(split, rflags)) {}
+        , splitter_(create_splitter(split, rflags, uflags)) {}
 
 private:
     static saver_type* create_saver(const std::string& fmt,
@@ -38,7 +39,7 @@ private:
     }
 
     static splitter_type* create_splitter(const std::string& split,
-                                          bool rflags) {
+                                          bool rflags, bool uflags) {
         if ("none" == split)
             return new none_flags_splitter();
         else if ("arch" == split)
@@ -46,7 +47,7 @@ private:
         else if ("full" == split)
             return new full_flags_splitter(rflags);
         else if ("insn" == split)
-            return new insn_flags_splitter(rflags);
+            return new insn_flags_splitter(rflags, uflags);
         else
             throw std::invalid_argument("unknown split format " + split);
     }
