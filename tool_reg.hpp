@@ -70,6 +70,7 @@ void write(const char* dis,
            const CONTEXT *ctxt, REG reg) {
     if (REG_valid(reg)) {
         reg = REG_FullRegName(reg);
+        if (reg == REG_INST_PTR && !enable_rip) return;
         UINT32 size = REG_Size(reg);
         bap::bytes_type data(size);
         PIN_GetContextRegval(ctxt, reg,
