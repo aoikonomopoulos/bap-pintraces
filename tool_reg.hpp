@@ -122,7 +122,7 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
                 IARG_UINT32, INS_OperandMemoryBaseReg(ins, i),
                 IARG_UINT32, INS_OperandMemoryIndexReg(ins, i),
                 IARG_END);
-            ++rd_count;
+            rd_count += 2;
         }
 
         if (INS_OperandIsReg(ins, i) && INS_OperandWritten(ins, i)) {
