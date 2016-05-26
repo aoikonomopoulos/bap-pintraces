@@ -11,6 +11,7 @@
 typedef bap::tracer<ADDRINT, THREADID> tracer_type;
 namespace tool { namespace reg {
 
+static bool enable_rip = false;
 std::string register_name(REG reg) {
     std::string name(REG_StringShort(reg));
     boost::algorithm::to_upper(name);
@@ -31,6 +32,7 @@ void read(const char* dis,
         reg = static_cast<REG>(va_arg(va, UINT32));
         if (REG_valid(reg)) {
             reg = REG_FullRegName(reg);
+            if (reg == REG_INST_PTR && !enable_rip) continue;
             UINT32 size = REG_Size(reg);
             bap::bytes_type data(size);
             PIN_GetContextRegval(ctxt, reg,

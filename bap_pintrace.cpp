@@ -21,7 +21,11 @@ KNOB<string> split(KNOB_MODE_WRITEONCE, "pintool",
 
 KNOB<bool> rflags(KNOB_MODE_WRITEONCE, "pintool",
                    "enable-rflags", "false",
-                  "Disable trace RFLAGS register on split");
+                  "Enable trace RFLAGS register on split");
+
+KNOB<bool> rip(KNOB_MODE_WRITEONCE, "pintool",
+               "enable-rip", "false",
+               "Enable trace rIP register");
 
 INT32 usage() {
     PIN_ERROR( "This Pintool trace "
@@ -46,6 +50,8 @@ int main(int argc, char *argv[]) {
         std::cerr << "unexpected exception" << std::endl;
         exit(0);
     }
+
+    tool::reg::enable_rip = rip.Value();
     INS_AddInstrumentFunction(tool::instruction,
                               static_cast<VOID*>(tracer));
     PIN_AddFiniFunction(tool::fini,
