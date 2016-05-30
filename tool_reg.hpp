@@ -153,11 +153,20 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
         }
 
         if (INS_OperandIsReg(ins, i) && INS_OperandWritten(ins, i)) {
+            REG reg = INS_OperandReg(ins, i);
             IARGLIST_AddArguments(
                 regs_wr,
-                IARG_UINT32, INS_OperandReg(ins, i),
+                IARG_UINT32, reg,
                 IARG_END);
             ++wr_count;
+
+            if (REG_is_gr16(reg) || REG_is_gr8(reg)) {
+                IARGLIST_AddArguments(
+                    regs_rd,
+                    IARG_UINT32, reg,
+                    IARG_END);
+                ++rd_count;
+            }
         }
     }
 
