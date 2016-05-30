@@ -39,25 +39,52 @@ void remember_store(tracer_type*, UINT32 values_count, ...) {
     va_end(va);
 }
 
-void store(tracer_type* tracer, ADDRINT addr, UINT32 size) {
+void special_store(tracer_type* tracer, ADDRINT addr, UINT32 size) {
     bap::bytes_type data(size);
     PIN_SafeCopy(static_cast<VOID*>(&data[0]),
                  reinterpret_cast<VOID*>(addr), size);
     tracer->save().memory_store(addr, data);
 }
 
+void store(tracer_type* tracer, UINT32 values_count, ...) {
+    va_list va;
+    va_start(va, values_count);
+    for (UINT32 i=0; i < values_count; ++i) {
+        ADDRINT addr = va_arg(va, ADDRINT);
+        UINT32 size = va_arg(va, UINT32);
+        special_store(tracer, addr, size);
+    }
+    va_end(va);
+}
+
+bool store_if_zf(ADDRINT rflags,
+                 tracer_type* tracer, UINT32 values_count, ...) {
+    if (rflags & 0x40) {
+        va_list va;
+        va_start(va, values_count);
+        for (UINT32 i=0; i < values_count; ++i) {
+            ADDRINT addr = va_arg(va, ADDRINT);
+            UINT32 size = va_arg(va, UINT32);
+            special_store(tracer, addr, size);
+        }
+        va_end(va);
+        return false;
+    }
+    return true;
+}
+
 void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
     std::for_each(
         boost::begin(m_mems),
         boost::end(m_mems),
-        boost::bind(store,
+        boost::bind(special_store,
                     tracer,
                     boost::bind(&mems_type::value_type::first, _1),
                     boost::bind(&mems_type::value_type::second, _1)));
     m_mems.clear();
 }
 
-VOID instruction(const char* dis, INS ins, VOID* ptr) {
+VOID instruction_default(const char* dis, INS ins, VOID* ptr) {
     IARGLIST mem_ld = IARGLIST_Alloc();
     IARGLIST mem_st = IARGLIST_Alloc();
     UINT32 ld_count = 0;
@@ -98,6 +125,51 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
                              IARG_END);
     IARGLIST_Free(mem_ld);
     IARGLIST_Free(mem_st);
+}
+
+VOID instruction_cmpxchg(const char* dis, INS ins, VOID* ptr) {
+    IARGLIST mem = IARGLIST_Alloc();
+    UINT32 count = 0;
+
+    if (INS_OperandIsMemory(ins, 0) ||
+        INS_OperandIsAddressGenerator(ins, 0)) {
+        IARGLIST_AddArguments(
+            mem,
+            IARG_MEMORYOP_EA, 0,
+            IARG_UINT32, INS_MemoryReadSize(ins),
+            IARG_END);
+        ++count;
+    }
+
+    INS_InsertCall(ins, IPOINT_BEFORE,
+                   (AFUNPTR)(load),
+                   IARG_PTR, ptr,
+                   IARG_UINT32, count,
+                   IARG_IARGLIST, mem,
+                   IARG_END);
+
+    INS_InsertIfCall(ins, IPOINT_AFTER,
+                     (AFUNPTR)(store_if_zf),
+                     IARG_REG_VALUE, INS_OperandReg(ins, 3),
+                     IARG_PTR, ptr,
+                     IARG_UINT32, count,
+                     IARG_IARGLIST, mem,
+                     IARG_END);
+
+    INS_InsertThenCall(ins, IPOINT_AFTER,
+                       (AFUNPTR)(store),
+                       IARG_PTR, ptr,
+                       IARG_UINT32, 0,
+                       IARG_END);
+
+    IARGLIST_Free(mem);
+}
+
+VOID instruction(const char* dis, INS ins, VOID* ptr) {
+    switch (INS_Opcode(ins)) {
+    case   XED_ICLASS_CMPXCHG: instruction_cmpxchg(dis, ins, ptr); break;
+    default: instruction_default(dis, ins, ptr);
+    }
 }
 
 }} //namespace tool::mem

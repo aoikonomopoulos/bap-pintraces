@@ -70,7 +70,7 @@ void remember_write(const char* dis,
     va_end(va);
 }
 
-void write(const char* dis,
+void special_write(const char* dis,
            tracer_type* tracer,
            const CONTEXT *ctxt, REG reg) {
     if (REG_valid(reg)) {
@@ -94,11 +94,44 @@ void write(const char* dis,
     }
 }
 
+void write(const char* dis,
+           tracer_type* tracer,
+           const CONTEXT *ctxt,
+           UINT32 values_count, ...) {
+    va_list va;
+    va_start(va, values_count);
+    REG reg = REG_INVALID();
+    for (UINT32 i=0; i < values_count; ++i) {
+        reg = static_cast<REG>(va_arg(va, UINT32));
+        special_write(dis, tracer, ctxt, reg);
+    }
+    va_end(va);
+}
+
+bool write_if_zf(ADDRINT rflags,
+                 const char* dis,
+                 tracer_type* tracer,
+                 const CONTEXT *ctxt,
+                 UINT32 values_count, ...) {
+    if (rflags & 0x40) {
+        va_list va;
+        va_start(va, values_count);
+        REG reg = REG_INVALID();
+        for (UINT32 i=0; i < values_count; ++i) {
+            reg = static_cast<REG>(va_arg(va, UINT32));
+            special_write(dis, tracer, ctxt, reg);
+        }
+        va_end(va);
+        return false;
+    }
+    return true;
+}
+
 void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
     std::for_each(
         boost::begin(m_regs),
         boost::end(m_regs),
-        boost::bind(write,
+        boost::bind(special_write,
                     boost::bind(&regs_type::value_type::first, _1),
                     tracer,
                     ctxt,
@@ -106,7 +139,7 @@ void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
     m_regs.clear();
 }
 
-VOID instruction(const char* dis, INS ins, VOID* ptr) {
+VOID instruction_default(const char* dis, INS ins, VOID* ptr) {
     IARGLIST regs_rd = IARGLIST_Alloc();
     IARGLIST regs_wr = IARGLIST_Alloc();
     UINT32 rd_count = 0;
@@ -174,7 +207,7 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
                    (AFUNPTR)(read),
                    IARG_PTR, dis,
                    IARG_PTR, ptr,
-                   IARG_CONTEXT,
+                   IARG_CONST_CONTEXT,
                    IARG_UINT32, rd_count,
                    IARG_IARGLIST, regs_rd,
                    IARG_END);
@@ -188,6 +221,105 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
     IARGLIST_Free(regs_rd);
     IARGLIST_Free(regs_wr);
 }
+
+VOID instruction_cmpxchg(const char* dis, INS ins, VOID* ptr) {
+    IARGLIST regs_rd = IARGLIST_Alloc();
+    IARGLIST regs_if_wr = IARGLIST_Alloc();
+    IARGLIST regs_then_wr = IARGLIST_Alloc();
+    UINT32 rd_count = 0;
+    UINT32 if_wr_count = 0;
+    UINT32 then_wr_count = 0;
+
+    if ( INS_OperandIsReg(ins, 0) ) {
+        IARGLIST_AddArguments(
+            regs_rd,
+            IARG_UINT32, INS_OperandReg(ins, 0),
+            IARG_END);
+        ++rd_count;
+
+        IARGLIST_AddArguments(
+            regs_then_wr,
+            IARG_UINT32, INS_OperandReg(ins, 0),
+            IARG_END);
+        ++then_wr_count;
+    } else if (INS_OperandIsMemory(ins, 0) ||
+               INS_OperandIsAddressGenerator(ins, 0)) {
+        REG seg = INS_OperandMemorySegmentReg(ins, 0);
+        REG base = INS_OperandMemoryBaseReg(ins, 0);
+        REG index = INS_OperandMemoryIndexReg(ins, 0);
+        IARGLIST_AddArguments(
+            regs_rd,
+            IARG_UINT32, (seg == REG_SEG_FS ? REG_SEG_FS_BASE :
+                          seg == REG_SEG_GS ? REG_SEG_GS_BASE :
+                          REG_INVALID()),
+            IARG_UINT32, base,
+            IARG_UINT32, index,
+            IARG_END);
+        rd_count += 3;
+    }
+
+    IARGLIST_AddArguments(
+        regs_rd,
+        IARG_UINT32, INS_OperandReg(ins, 1),
+        IARG_UINT32, INS_OperandReg(ins, 2),
+        IARG_END);
+    rd_count += 2;
+
+
+    IARGLIST_AddArguments(
+        regs_if_wr,
+        IARG_UINT32, INS_OperandReg(ins, 3),
+        IARG_END);
+    ++if_wr_count;
+
+    IARGLIST_AddArguments(
+        regs_then_wr,
+        IARG_UINT32, INS_OperandReg(ins, 1),
+        IARG_UINT32, INS_OperandReg(ins, 3),
+        IARG_END);
+    then_wr_count+=2;
+
+    INS_InsertCall(ins, IPOINT_BEFORE,
+                   (AFUNPTR)(read),
+                   IARG_PTR, dis,
+                   IARG_PTR, ptr,
+                   IARG_CONST_CONTEXT,
+                   IARG_UINT32, rd_count,
+                   IARG_IARGLIST, regs_rd,
+                   IARG_END);
+
+    INS_InsertIfCall(ins, IPOINT_AFTER,
+                     (AFUNPTR)(write_if_zf),
+                     IARG_REG_VALUE, INS_OperandReg(ins, 3),
+                     IARG_PTR, dis,
+                     IARG_PTR, ptr,
+                     IARG_CONST_CONTEXT,
+                     IARG_UINT32, if_wr_count,
+                     IARG_IARGLIST, regs_if_wr,
+                     IARG_END);
+
+    INS_InsertThenCall(ins, IPOINT_AFTER,
+                       (AFUNPTR)(write),
+                       IARG_PTR, dis,
+                       IARG_PTR, ptr,
+                       IARG_CONST_CONTEXT,
+                       IARG_UINT32, then_wr_count,
+                       IARG_IARGLIST, regs_then_wr,
+                       IARG_END);
+
+    IARGLIST_Free(regs_rd);
+    IARGLIST_Free(regs_if_wr);
+    IARGLIST_Free(regs_then_wr);
+
+}
+
+VOID instruction(const char* dis, INS ins, VOID* ptr) {
+    switch (INS_Opcode(ins)) {
+    case   XED_ICLASS_CMPXCHG: instruction_cmpxchg(dis, ins, ptr); break;
+    default: instruction_default(dis, ins, ptr);
+    }
+}
+
 
 }} //namespace tool::reg
 #endif //BAP_PIN_TOOL_HPP
