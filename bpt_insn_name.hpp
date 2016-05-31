@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 
-namespace bap {
+namespace bpt {
 
 namespace {
 
@@ -44,6 +44,6 @@ std::string insn_name(const std::string& dis) {
 }
 
 
-}
+} //namespace bpt
 
 #endif //BAP_PIN_INSN_NAME_HPP

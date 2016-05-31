@@ -1,5 +1,5 @@
 #include "pin.H"
-#include "tool.hpp"
+#include "bpt_tool.hpp"
 
 KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
                        "o", "trace.frames",
@@ -57,10 +57,10 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    tool::reg::enable_rip = rip.Value();
-    INS_AddInstrumentFunction(tool::instruction,
+    bpt::tool::reg::enable_rip = rip.Value();
+    INS_AddInstrumentFunction(bpt::tool::instruction,
                               static_cast<VOID*>(tracer));
-    PIN_AddFiniFunction(tool::fini,
+    PIN_AddFiniFunction(bpt::tool::fini,
                         static_cast<VOID*>(tracer));
 
     // Never returns

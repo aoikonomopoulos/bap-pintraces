@@ -1,12 +1,12 @@
-#ifndef BAP_PIN_TRACER_INSNS_FLAGS_SPLITTER_HPP
-#define BAP_PIN_TRACER_INSNS_FLAGS_SPLITTER_HPP
+#ifndef BPT_INSNS_FLAGS_SPLITTER_HPP
+#define BPT_INSNS_FLAGS_SPLITTER_HPP
 
 #include <algorithm>
 #include <iterator>
 #include <boost/range.hpp>
 #include <boost/bind.hpp>
-#include "flags_splitter.hpp"
-namespace bap {
+#include "bpt_flags_splitter.hpp"
+namespace bpt {
 
 typedef boost::unordered_map<std::string, insns> map_type;
 
@@ -94,6 +94,6 @@ private:
     bool uflags_;
 };
 
-} //namespace bap
+} //namespace bpt
 
-#endif //BAP_PIN_TRACER_INSNS_FLAGS_SPLITTER_HPP
+#endif //BPT_INSNS_FLAGS_SPLITTER_HPP

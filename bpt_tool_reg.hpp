@@ -1,15 +1,15 @@
-#ifndef BAP_PIN_TOOL_REG_HPP
-#define BAP_PIN_TOOL_REG_HPP
+#ifndef BPT_TOOL_REG_HPP
+#define BPT_TOOL_REG_HPP
 
 #include <list>
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include "pin.H"
-#include "tracer.hpp"
+#include "bpt_tracer.hpp"
 
 
-typedef bap::tracer<ADDRINT, THREADID> tracer_type;
-namespace tool { namespace reg {
+typedef bpt::tracer<ADDRINT, THREADID> tracer_type;
+namespace bpt { namespace tool { namespace reg {
 
 static bool enable_rip = false;
 std::string register_name(REG reg) {
@@ -39,13 +39,13 @@ void read(const char* dis,
             reg = REG_FullRegName(reg);
             if (reg == REG_INST_PTR && !enable_rip) continue;
             UINT32 size = REG_Size(reg);
-            bap::bytes_type data(size);
+            bpt::bytes_type data(size);
             PIN_GetContextRegval(ctxt, reg,
                                  reinterpret_cast<UINT8*>(&data[0]));
             if(REG_is_flags(reg)) {
-                bap::flags_type flags =
+                bpt::flags_type flags =
                     tracer->split().read(dis, register_name(reg), data);
-                for(bap::flags_type::iterator i = flags.begin();
+                for(bpt::flags_type::iterator i = flags.begin();
                     i < flags.end(); ++i) {
                     tracer->save().register_read(i->name, i->data,
                                                  i->bitsize);
@@ -77,13 +77,13 @@ void special_write(const char* dis,
         reg = REG_FullRegName(reg);
         if (reg == REG_INST_PTR && !enable_rip) return;
         UINT32 size = REG_Size(reg);
-        bap::bytes_type data(size);
+        bpt::bytes_type data(size);
         PIN_GetContextRegval(ctxt, reg,
                              reinterpret_cast<UINT8*>(&data[0]));
         if(REG_is_flags(reg)) {
-            bap::flags_type flags =
+            bpt::flags_type flags =
                 tracer->split().write(dis, register_name(reg), data);
-            for(bap::flags_type::iterator i = flags.begin();
+            for(bpt::flags_type::iterator i = flags.begin();
                 i < flags.end(); ++i) {
                 tracer->save().register_write(i->name, i->data,
                                               i->bitsize);
@@ -139,7 +139,7 @@ void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
     m_regs.clear();
 }
 
-VOID instruction_default(const char* dis, INS ins, VOID* ptr) {
+VOID instruction_default(const char* dis, ::INS ins, VOID* ptr) {
     IARGLIST regs_rd = IARGLIST_Alloc();
     IARGLIST regs_wr = IARGLIST_Alloc();
     UINT32 rd_count = 0;
@@ -222,7 +222,7 @@ VOID instruction_default(const char* dis, INS ins, VOID* ptr) {
     IARGLIST_Free(regs_wr);
 }
 
-VOID instruction_cmpxchg(const char* dis, INS ins, VOID* ptr) {
+VOID instruction_cmpxchg(const char* dis, ::INS ins, VOID* ptr) {
     IARGLIST regs_rd = IARGLIST_Alloc();
     IARGLIST regs_if_wr = IARGLIST_Alloc();
     IARGLIST regs_then_wr = IARGLIST_Alloc();
@@ -313,7 +313,7 @@ VOID instruction_cmpxchg(const char* dis, INS ins, VOID* ptr) {
 
 }
 
-VOID instruction(const char* dis, INS ins, VOID* ptr) {
+VOID instruction(const char* dis, ::INS ins, VOID* ptr) {
     switch (INS_Opcode(ins)) {
     case   XED_ICLASS_CMPXCHG: instruction_cmpxchg(dis, ins, ptr); break;
     default: instruction_default(dis, ins, ptr);
@@ -321,5 +321,5 @@ VOID instruction(const char* dis, INS ins, VOID* ptr) {
 }
 
 
-}} //namespace tool::reg
-#endif //BAP_PIN_TOOL_HPP
+}}} //namespace bpt::tool::reg
+#endif //BPT_TOOL_REG_HPP

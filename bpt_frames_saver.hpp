@@ -3,9 +3,9 @@
 #include <memory>
 #include <boost/scoped_ptr.hpp>
 #include <libtrace/trace.container.hpp>
-#include "saver.hpp"
+#include "bpt_saver.hpp"
 
-namespace bap {
+namespace bpt {
 
 namespace trc = SerializedTrace;
 
@@ -115,6 +115,6 @@ private:
     boost::scoped_ptr<holder> current;
 };
 
-}
+} //namespace bpt
 
 #endif //BAP_PIN_FRAMES_SAVER_HPP

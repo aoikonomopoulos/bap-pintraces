@@ -1,9 +1,9 @@
-#ifndef BAP_PIN_TRACER_INSN_FLAGS_HPP
-#define BAP_PIN_TRACER_INSN_FLAGS_HPP
+#ifndef BPT_INSN_FLAGS_HPP
+#define BPT_INSN_FLAGS_HPP
 
 #include <boost/unordered_map.hpp>
 
-namespace bap {
+namespace bpt {
 
 /*Instruction affects on flag*/
 enum affect {
@@ -22,9 +22,9 @@ enum affect {
 
 /*RFLAGS register flags*/
 enum flags {
-#define BAP_PINTRACER_DECLARE_FLAGS
-#include "insn_flags_descr.inc"
-#undef BAP_PINTRACER_DECLARE_FLAGS
+#define BPT_DECLARE_FLAGS
+#include "bpt_insn_flags_descr.inc"
+#undef BPT_DECLARE_FLAGS
     FLAGS_MAX
 };
 
@@ -35,35 +35,35 @@ static const struct flags_descr {
     int size;
     int mask;
 } descr [] = {
-#define BAP_PINTRACER_DECLARE_FLAGS_DESCR
-#include "insn_flags_descr.inc"
-#undef BAP_PINTRACER_DECLARE_FLAGS_DESCR
+#define BPT_DECLARE_FLAGS_DESCR
+#include "bpt_insn_flags_descr.inc"
+#undef BPT_DECLARE_FLAGS_DESCR
 };
 
 /*Instuctions affected of RFLAGS*/
 enum insns {
-#define BAP_PINTRACER_DECLARE_INSN
-#include "insn_flags.inc"
-#undef BAP_PINTRACER_DECLARE_INSN
+#define BPT_DECLARE_INSN
+#include "bpt_insn_flags.inc"
+#undef BPT_DECLARE_INSN
 INSN_MAX
 };
 
 /*Instuctions names affected of RFLAGS*/
 static const char* insns_names[] = {
-#define BAP_PINTRACER_DECLARE_INSN_NAMES
-#include "insn_flags.inc"
-#undef BAP_PINTRACER_DECLARE_INSN_NAMES
+#define BPT_DECLARE_INSN_NAMES
+#include "bpt_insn_flags.inc"
+#undef BPT_DECLARE_INSN_NAMES
 };
 
 /*Instuctions affects to each flag*/
 static const affect affects[][FLAGS_MAX] = {
-#define BAP_PIN_TRACER_DECLARE_INSN_FLAGS
-#include "insn_flags.inc"
-#undef BAP_PIN_TRACER_DECLARE_INSN_FLAGS
+#define BPT_DECLARE_INSN_FLAGS
+#include "bpt_insn_flags.inc"
+#undef BPT_DECLARE_INSN_FLAGS
 };
 
 
 
-} //namespace bap
+} //namespace bpt
 
-#endif //BAP_PIN_TRACER_INSN_FLAGS_HPP
+#endif //BPT_INSN_FLAGS_HPP

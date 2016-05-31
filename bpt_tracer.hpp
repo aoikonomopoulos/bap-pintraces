@@ -1,17 +1,17 @@
-#ifndef BAP_PIN_TRACER_HPP
-#define BAP_PIN_TRACER_HPP
+#ifndef BPT_TRACER_HPP
+#define BPT_TRACER_HPP
 
 #include <stdexcept>
 #include <boost/scoped_ptr.hpp>
-#include "text_saver.hpp"
-#include "frames_saver.hpp"
-#include "none_flags_splitter.hpp"
-#include "insn_flags.hpp"
-#include "arch_size_flags_splitter.hpp"
-#include "full_flags_splitter.hpp"
-#include "insn_flags_splitter.hpp"
+#include "bpt_text_saver.hpp"
+#include "bpt_frames_saver.hpp"
+#include "bpt_none_flags_splitter.hpp"
+#include "bpt_insn_flags.hpp"
+#include "bpt_arch_size_flags_splitter.hpp"
+#include "bpt_full_flags_splitter.hpp"
+#include "bpt_insn_flags_splitter.hpp"
 
-namespace bap {
+namespace bpt {
 
 template <typename addr_type, typename thread>
 struct tracer {
@@ -57,5 +57,5 @@ private:
 };
 
 
-} //namespace bap
-#endif //BAP_PIN_TRACER_HPP
+} //namespace bpt
+#endif //BPT_TRACER_HPP

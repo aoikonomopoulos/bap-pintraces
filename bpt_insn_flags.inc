@@ -1,8 +1,8 @@
-#if defined(BAP_PINTRACER_DECLARE_INSN)
+#if defined(BPT_DECLARE_INSN)
 #define tline(insn, ...) insn
-#elif defined(BAP_PIN_TRACER_DECLARE_INSN_FLAGS)
+#elif defined(BPT_DECLARE_INSN_FLAGS)
 #define tline(insn, ...) { __VA_ARGS__ }
-#elif defined(BAP_PINTRACER_DECLARE_INSN_NAMES)
+#elif defined(BPT_DECLARE_INSN_NAMES)
 #define tline(insn, ...) #insn
 #else
 #error "no action defined"

@@ -1,6 +1,6 @@
-#if defined(BAP_PINTRACER_DECLARE_FLAGS)
+#if defined(BPT_DECLARE_FLAGS)
 #define entry(name, pos, size, mask) name
-#elif defined(BAP_PINTRACER_DECLARE_FLAGS_DESCR)
+#elif defined(BPT_DECLARE_FLAGS_DESCR)
 #define entry(name, pos, size, mask) {#name, pos, size, mask}
 #else
 #error "no action defined"

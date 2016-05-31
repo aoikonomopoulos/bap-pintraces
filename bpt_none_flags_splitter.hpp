@@ -1,12 +1,11 @@
-#ifndef BAP_PIN_TRACER_ARCH_SIZE_FLAGS_SPLITTER_HPP
-#define BAP_PIN_TRACER_ARCH_SIZE_FLAGS_SPLITTER_HPP
+#ifndef BPT_NONE_FLAGS_SPLITTER_HPP
+#define BPT_NONE_FLAGS_SPLITTER_HPP
 
-#include "flags_splitter.hpp"
+#include "bpt_flags_splitter.hpp"
 
-namespace bap {
+namespace bpt {
 
-template<typename addr>
-struct arch_size_flags_splitter : flags_splitter {
+struct none_flags_splitter : flags_splitter {
     flags_type read(const std::string&,
                     const std::string& name,
                     const bytes_type& data) {
@@ -21,11 +20,11 @@ struct arch_size_flags_splitter : flags_splitter {
 private:
     flags_type make(const std::string& name,
                     const bytes_type& data) {
-        flag f = {name, bytes_type(data), sizeof(addr)*8};
+        flag f = {name, bytes_type(data), data.size()*8};
         return flags_type(1, f);
     }
 };
 
-} //namespace bap
+} //namespace bpt
 
-#endif //BAP_PIN_TRACER_ARCH_SIZE_FLAGS_SPLITTER_HPP
+#endif //BPT_NONE_FLAGS_SPLITTER_HPP

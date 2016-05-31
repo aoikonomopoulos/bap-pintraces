@@ -1,15 +1,15 @@
-#ifndef BAP_PIN_TOOL_MEM_HPP
-#define BAP_PIN_TOOL_MEM_HPP
+#ifndef BPT_TOOL_MEM_HPP
+#define BPT_TOOL_MEM_HPP
 
 #include <list>
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include "pin.H"
-#include "tracer.hpp"
+#include "bpt_tracer.hpp"
 
 
-typedef bap::tracer<ADDRINT, THREADID> tracer_type;
-namespace tool { namespace mem {
+typedef bpt::tracer<ADDRINT, THREADID> tracer_type;
+namespace bpt { namespace tool { namespace mem {
 
 typedef std::list< std::pair<ADDRINT, UINT32> > mems_type;
 mems_type m_mems;
@@ -20,7 +20,7 @@ void load(tracer_type* tracer, UINT32 values_count, ...) {
     for (UINT32 i=0; i < values_count; ++i) {
         ADDRINT addr = va_arg(va, ADDRINT);
         UINT32 size = va_arg(va, UINT32);
-        bap::bytes_type data(size);
+        bpt::bytes_type data(size);
         PIN_SafeCopy(static_cast<VOID*>(&data[0]),
                      reinterpret_cast<VOID*>(addr), size);
         tracer->save().memory_load(addr, data);
@@ -40,7 +40,7 @@ void remember_store(tracer_type*, UINT32 values_count, ...) {
 }
 
 void special_store(tracer_type* tracer, ADDRINT addr, UINT32 size) {
-    bap::bytes_type data(size);
+    bpt::bytes_type data(size);
     PIN_SafeCopy(static_cast<VOID*>(&data[0]),
                  reinterpret_cast<VOID*>(addr), size);
     tracer->save().memory_store(addr, data);
@@ -84,7 +84,7 @@ void update_context(tracer_type* tracer, const CONTEXT * ctxt) {
     m_mems.clear();
 }
 
-VOID instruction_default(const char* dis, INS ins, VOID* ptr) {
+VOID instruction_default(const char* dis, ::INS ins, VOID* ptr) {
     IARGLIST mem_ld = IARGLIST_Alloc();
     IARGLIST mem_st = IARGLIST_Alloc();
     UINT32 ld_count = 0;
@@ -127,7 +127,7 @@ VOID instruction_default(const char* dis, INS ins, VOID* ptr) {
     IARGLIST_Free(mem_st);
 }
 
-VOID instruction_cmpxchg(const char* dis, INS ins, VOID* ptr) {
+VOID instruction_cmpxchg(const char* dis, ::INS ins, VOID* ptr) {
     IARGLIST mem = IARGLIST_Alloc();
     UINT32 count = 0;
 
@@ -165,12 +165,12 @@ VOID instruction_cmpxchg(const char* dis, INS ins, VOID* ptr) {
     IARGLIST_Free(mem);
 }
 
-VOID instruction(const char* dis, INS ins, VOID* ptr) {
+VOID instruction(const char* dis, ::INS ins, VOID* ptr) {
     switch (INS_Opcode(ins)) {
     case   XED_ICLASS_CMPXCHG: instruction_cmpxchg(dis, ins, ptr); break;
     default: instruction_default(dis, ins, ptr);
     }
 }
 
-}} //namespace tool::mem
-#endif //BAP_PIN_TOOL_HPP
+}}} //namespace bpt::tool::mem
+#endif //BPT_TOOL_MEM_HPP

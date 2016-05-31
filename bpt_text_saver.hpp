@@ -6,9 +6,9 @@
 #include <numeric>
 #include <algorithm>
 #include <functional>
-#include "saver.hpp"
-#include "insn_name.hpp"
-namespace bap {
+#include "bpt_saver.hpp"
+#include "bpt_insn_name.hpp"
+namespace bpt {
 
 namespace {
 
@@ -133,6 +133,6 @@ private:
     std::ofstream out;
 };
 
-}
+} //namespace bpt
 
 #endif //BAP_PIN_TEXT_SAVER_HPP

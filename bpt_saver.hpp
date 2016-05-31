@@ -1,7 +1,7 @@
 #ifndef BAP_PIN_SAVER_HPP
 #define BAP_PIN_SAVER_HPP
 #include <vector>
-namespace bap {
+namespace bpt {
 
 typedef std::vector<char> bytes_type;
 
@@ -25,6 +25,6 @@ private:
     saver& operator=(const saver&);
 };
 
-} //namespace bap
+} //namespace bpt
 
 #endif //BAP_PIN_SAVER_HPP

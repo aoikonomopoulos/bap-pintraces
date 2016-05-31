@@ -1,12 +1,12 @@
-#ifndef BAP_PIN_TRACER_FLAGS_SPLITTER_HPP
-#define BAP_PIN_TRACER_FLAGS_SPLITTER_HPP
+#ifndef BPT_FLAGS_SPLITTER_HPP
+#define BPT_FLAGS_SPLITTER_HPP
 
 #include <string>
 #include <vector>
 
-#include "saver.hpp"
-#include "insn_flags.hpp"
-namespace bap {
+#include "bpt_saver.hpp"
+#include "bpt_insn_flags.hpp"
+namespace bpt {
 
 struct flag {
     std::string name;
@@ -53,8 +53,8 @@ inline flag get_flag_2(const flags& i,
 
 }
 
-} //namespace bap
+} //namespace bpt
 
 
 
-#endif //BAP_PIN_TRACER_FLAGS_SPLITTER_HPP
+#endif //BPT_FLAGS_SPLITTER_HPP

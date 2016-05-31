@@ -1,13 +1,13 @@
-#ifndef BAP_PIN_TRACER_FULL_FLAGS_SPLITTER_HPP
-#define BAP_PIN_TRACER_FULL_FLAGS_SPLITTER_HPP
+#ifndef BPT_FULL_FLAGS_SPLITTER_HPP
+#define BPT_FULL_FLAGS_SPLITTER_HPP
 
 #include <algorithm>
 #include <iterator>
 #include <boost/range.hpp>
 #include <boost/bind.hpp>
-#include "flags_splitter.hpp"
-#include "insn_flags.hpp"
-namespace bap {
+#include "bpt_flags_splitter.hpp"
+#include "bpt_insn_flags.hpp"
+namespace bpt {
 
 struct full_flags_splitter : flags_splitter {
     explicit full_flags_splitter(bool rflags) : rflags_(rflags) {}
@@ -43,6 +43,6 @@ private:
     bool rflags_;
 };
 
-} //namespace bap
+} //namespace bpt
 
-#endif //BAP_PIN_TRACER_FULL_FLAGS_SPLITTER_HPP
+#endif //BPT_FULL_FLAGS_SPLITTER_HPP

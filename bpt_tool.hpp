@@ -1,18 +1,18 @@
-#ifndef BAP_PIN_TOOL_HPP
-#define BAP_PIN_TOOL_HPP
+#ifndef BPT_TOOL_HPP
+#define BPT_TOOL_HPP
 #include <set>
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include "pin.H"
-#include "tracer.hpp"
-#include "tool_reg.hpp"
-#include "tool_mem.hpp"
+#include "bpt_tracer.hpp"
+#include "bpt_tool_reg.hpp"
+#include "bpt_tool_mem.hpp"
 
 
-typedef bap::tracer<ADDRINT, THREADID> tracer_type;
-namespace tool {
+typedef bpt::tracer<ADDRINT, THREADID> tracer_type;
+namespace bpt { namespace tool {
 
-const char* disassemble(INS insn) {
+const char* disassemble(::INS insn) {
     static std::set<std::string> insns;
     std::string dis = INS_Disassemble(insn);
     boost::algorithm::to_upper(dis);
@@ -27,13 +27,13 @@ void code_exec(tracer_type* tracer, BOOL cond, const CONTEXT* ctx,
     reg::update_context(tracer, ctx);
     mem::update_context(tracer, ctx);
     if (cond) {
-        bap::bytes_type bytes(size);
+        bpt::bytes_type bytes(size);
         PIN_SafeCopy(&bytes[0], (const void*) addr, size);
         tracer->save().code_exec(dis, addr, bytes, tid);
     }
 }
 
-VOID instruction(INS ins, VOID* ptr) {
+VOID instruction(::INS ins, VOID* ptr) {
     const char* dis = disassemble(ins);
     if (INS_HasRealRep(ins)) {
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(code_exec),
@@ -65,5 +65,5 @@ VOID fini(INT32 code, VOID* ptr) {
     delete tracer;
 }
 
-} //namespace tool
-#endif //BAP_PIN_TOOL_HPP
+}} //namespace btp::tool
+#endif //BPT_TOOL_HPP
