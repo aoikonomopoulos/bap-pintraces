@@ -60,9 +60,7 @@ VOID instruction(::INS ins, VOID* ptr) {
     mem::instruction(dis, ins, ptr);
 }
 
-VOID fini(INT32 code, VOID* ptr) {
-    tracer_type *tracer = static_cast<tracer_type*>(ptr);
-    delete tracer;
+VOID fini(INT32, VOID*) {}
 }
 
 }} //namespace btp::tool

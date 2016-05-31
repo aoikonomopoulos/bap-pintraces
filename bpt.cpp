@@ -39,6 +39,12 @@ INT32 usage() {
     return -1;
 }
 
+VOID fini(INT32 code, VOID* ptr) {
+    bpt::tool::fini(code, ptr);
+    tracer_type *tracer = static_cast<tracer_type*>(ptr);
+    delete tracer;
+}
+
 int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
@@ -60,8 +66,7 @@ int main(int argc, char *argv[]) {
     bpt::tool::reg::enable_rip = rip.Value();
     INS_AddInstrumentFunction(bpt::tool::instruction,
                               static_cast<VOID*>(tracer));
-    PIN_AddFiniFunction(bpt::tool::fini,
-                        static_cast<VOID*>(tracer));
+    PIN_AddFiniFunction(fini, static_cast<VOID*>(tracer));
 
     // Never returns
     PIN_StartProgram();
