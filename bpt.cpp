@@ -1,75 +1,72 @@
-#include "pin.H"
-#include "bpt_tool.hpp"
+#include <iostream>
+#include <fstream>
+#include "bpt.hpp"
 
-KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
-                       "o", "trace.frames",
-                       "Trace file to output to.");
+namespace bpt {
 
-KNOB<string> format(KNOB_MODE_WRITEONCE, "pintool",
-                    "fmt", "frames",
-                    "Trace output format (text | frames).");
+struct trace_context {
+    UINT32 tc;
+    UINT32 bc;
+    UINT32 ic;
+    void clear() { bc = 0; ic = 0; }
+};
 
-KNOB<string> split(KNOB_MODE_WRITEONCE, "pintool",
-                   "split-flags", "insn",
-                   "Split flags to bits and trace it "
-                   "as independed bits. Valid values:\n"
-                   "\t none - disable splitting \n"
-                   "\t arch - grow flags size to GR size\n"
-                   "\t full - split all flags bits \n"
-                   "\t insn - trace only "
-                   "instruction used flags bits.");
-
-KNOB<bool> rflags(KNOB_MODE_WRITEONCE, "pintool",
-                   "enable-rflags", "false",
-                  "Enable trace RFLAGS register on split");
-
-KNOB<bool> rip(KNOB_MODE_WRITEONCE, "pintool",
-               "enable-rip", "false",
-               "Enable trace rIP register");
-
-KNOB<bool> uflags(KNOB_MODE_WRITEONCE, "pintool",
-                  "enable-undefined-flags", "false",
-                  "Enable trace undefined rflags values");
-
-
-INT32 usage() {
-    PIN_ERROR( "This Pintool trace "
-               "instructions memory and registers usage\n"
-              + KNOB_BASE::StringKnobSummary() + "\n");
-    return -1;
+VOID handle_next(saver* out, UINT32 tc, UINT32 bc, UINT32 ic, UINT32 opcode) {
+    *out << tc << "." << bc << "." << ic << ": " << OPCODE_StringShort(opcode) << std::endl;
 }
 
-VOID fini(INT32 code, VOID* ptr) {
-    bpt::tool::fini(code, ptr);
-    tracer_type *tracer = static_cast<tracer_type*>(ptr);
-    delete tracer;
+VOID handle_tail(saver* out, UINT32 tc, UINT32 bc, UINT32 ic, UINT32 opcode) {
+    *out << "TAIL: " << tc << "." << bc << "." << ic << ": " << OPCODE_StringShort(opcode) << std::endl;
 }
 
-int main(int argc, char *argv[]) {
-    PIN_InitSymbols();
-    if (PIN_Init(argc, argv)) return usage();
-    tracer_type *tracer = 0;
-    try {
-        tracer = new tracer_type(format.Value(),
-                                 tracefile.Value(),
-                                 split.Value(),
-                                 rflags.Value(),
-                                 uflags.Value());
-    } catch(const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        exit(0);
-    } catch (...) {
-        std::cerr << "unexpected exception" << std::endl;
-        exit(0);
+
+void process_next(trace_context& ctx, saver* out, INS ins) {
+    *out << ctx.tc << '.' << ctx.bc << '.' << ctx.ic << ": " << INS_Disassemble(ins) << std::endl;
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(handle_next),
+                   IARG_PTR, out,
+                   IARG_UINT32, ctx.tc,
+                   IARG_UINT32, ctx.bc,
+                   IARG_UINT32, ctx.ic,
+                   IARG_UINT32, INS_Opcode(ins),
+                   IARG_END);
+}
+
+void process_tail(trace_context& ctx, saver* out, INS ins) {
+    *out << ctx.tc << '.' << ctx.bc << '.' << ctx.ic << ": " << INS_Disassemble(ins) << std::endl;
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(handle_tail),
+                   IARG_PTR, out,
+                   IARG_UINT32, ctx.tc,
+                   IARG_UINT32, ctx.bc,
+                   IARG_UINT32, ctx.ic,
+                   IARG_UINT32, INS_Opcode(ins),
+                   IARG_END);
+}
+
+void process_block(trace_context& ctx, saver* out, BBL b) {
+    ctx.ic = 0;
+
+    INS ins = BBL_InsHead(b);
+    //counting all instruction except last one, which is single exit
+    for(UINT32 i = 1, I = BBL_NumIns(b);
+        i < I; ++i, ins = INS_Next(ins)) {
+        process_next(ctx, out, ins);
+        ++ctx.ic;
     }
-
-    bpt::tool::reg::enable_rip = rip.Value();
-    INS_AddInstrumentFunction(bpt::tool::instruction,
-                              static_cast<VOID*>(tracer));
-    PIN_AddFiniFunction(fini, static_cast<VOID*>(tracer));
-
-    // Never returns
-    PIN_StartProgram();
     
-    return 0;
+    process_tail(ctx, out, BBL_InsTail(b));
+    ++ctx.ic;
+}
+
+VOID trace(TRACE trace, saver* out) {
+    static trace_context ctx;
+    ctx.clear();
+    for(BBL b = TRACE_BblHead(trace); BBL_Valid(b); b = BBL_Next(b)) {
+        process_block(ctx, out, b);
+        ++ctx.bc;
+    }
+    ++ctx.tc;
+}
+
+VOID fini(INT32, saver*) {}
+
 }

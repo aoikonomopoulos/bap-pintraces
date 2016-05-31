@@ -307,6 +307,12 @@ $(OBJDIR)gentrace$(PINTOOL_SUFFIX): $(OBJDIR)gentrace$(OBJ_SUFFIX) $(BAPOBJS) $(
 	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$(OBJDIR)gentrace$(PINTOOL_SUFFIX)  $^ $(TOOL_LPATHS) $(TOOL_LIBS)
 
 
+BPTOBJS = $(OBJDIR)bpt$(OBJ_SUFFIX)
+
+$(OBJDIR)bpt$(PINTOOL_SUFFIX): $(OBJDIR)bpt_main$(OBJ_SUFFIX) $(BPTOBJS) $(LIBTRACE)
+	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$(OBJDIR)bpt$(PINTOOL_SUFFIX)  $^ $(TOOL_LPATHS) $(TOOL_LIBS)
+
+
 ###### Special libs' build rules ######
 
 # placeholder for special libs' build rules
