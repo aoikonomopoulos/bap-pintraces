@@ -164,13 +164,14 @@ void process_regs(buffer& buff, INS ins) {
                          IARG_UINT32, reads.size(),
                          IARG_IARGLIST, reads.value(),
                          IARG_END);
-        INS_InsertThenPredicatedCall(ins, IPOINT_BEFORE,
-                                     (AFUNPTR)(handle_reads),
-                                     IARG_BOOL, true,
-                                     IARG_IARGLIST, common.value(),
-                                     IARG_UINT32, preds.size(),
-                                     IARG_IARGLIST, preds.value(),
-                                     IARG_END);
+
+        INS_InsertThenCall(ins, IPOINT_BEFORE,
+                           (AFUNPTR)(handle_reads),
+                           IARG_BOOL, true,
+                           IARG_IARGLIST, common.value(),
+                           IARG_UINT32, preds.size(),
+                           IARG_IARGLIST, preds.value(),
+                           IARG_END);
     } else {
         INS_InsertCall(ins, IPOINT_BEFORE,
                        (AFUNPTR)(handle_reads),
