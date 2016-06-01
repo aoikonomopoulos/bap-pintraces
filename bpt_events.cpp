@@ -1,3 +1,9 @@
+#include <iomanip>
+#include <iostream>
+#include <numeric>
+#include <algorithm>
+#include <functional>
+
 #include <boost/algorithm/string.hpp>
 #include "bpt_events.hpp"
 
@@ -11,6 +17,59 @@ template <typename T1, typename T2>
 T1 pointer_cast(T2* ptr) {
     return static_cast<T1>(static_cast<void*>(ptr));
 }
+
+namespace io {
+struct ios_flag_saver {
+    explicit ios_flag_saver(std::ostream& os)
+        : os_(os), f_(os.flags()) {}
+    ~ios_flag_saver() { os_.flags(f_); }
+private:
+    std::ostream& os_;
+    std::ios::fmtflags f_;
+};
+
+struct bytes_printer : std::binary_function<const std::string&,
+                                            char,
+                                           std::string> {
+    bytes_printer(std::ostream& o, const std::string& s)
+        : out(o), sep(s) {}
+    std::string operator()(const std::string& init, char b) {
+        ios_flag_saver s(out);
+        out << init << std::hex << std::uppercase << std::setfill('0') << std::setw(2)
+            << static_cast<int>(static_cast<unsigned char>(b));
+        return sep;
+    }
+private:
+    std::ostream& out;
+    const std::string& sep;
+};
+
+namespace code {
+std::ostream& operator<<(std::ostream& out,
+                         const bytes_type& bytes) {
+    std::accumulate(bytes.begin(), bytes.end(),
+                    std::string(""), bytes_printer(out, " "));
+    return out;
+}
+} //namespace code
+
+namespace data {
+std::ostream& operator<<(std::ostream& out,
+                         const bytes_type& data) {
+    bytes_type::const_reverse_iterator it =
+        std::find_if(data.rbegin(), data.rend(),
+                     std::bind1st(std::not_equal_to<char>(), 0));
+    if (it != data.rend()) {
+        out << "0x";
+        std::accumulate(it, data.rend(),
+                        std::string(""), bytes_printer(out, ""));
+    } else {
+        out << "0x0";
+    }
+    return out;
+}
+} //namespace data
+} //namespace io
 
 //operation event
 struct operation::impl {
@@ -37,8 +96,47 @@ operation::operation(const char* disasm, OPCODE opcode, ADDRINT addr, UINT32 siz
                      THREADID tid)
     : pimpl(new impl(disasm, opcode, addr, size, tid)) {}
 
+OPCODE operation::opcode() const {
+    return pimpl->opcode;
+}
+
+ADDRINT operation::addr() const {
+    return pimpl->addr;
+}
+
+THREADID operation::tid() const {
+    return pimpl->tid;
+}
+
+const bytes_type& operation::bytes() const {
+    return pimpl->bytes;
+}
+
+std::string operation::name() const {
+    return OPCODE_StringShort(pimpl->opcode);
+}
+
+const char* operation::disasm() const {
+    return pimpl->disasm;
+}
+
 std::ostream& operation::operator<<(std::ostream& out) const {
-    return out << OPCODE_StringShort(pimpl->opcode) << ": " << pimpl->disasm;
+    using namespace io::code;
+    return out << this->name()
+               << '('
+               << this->tid()
+               << ','
+               << "0x"
+               << std::hex
+               << this->addr()
+               << std::dec
+               << ':'
+               << sizeof(ADDRINT)*8
+               << ')'
+               << '['
+               << this->bytes()
+               << "] "
+               << this->disasm();
 }
 
 //register reads/writes events
@@ -104,14 +202,20 @@ read::read(OPCODE opcode, REG reg, const CONTEXT* ctx)
 // void read::accept(saver* out) { s->visit(*this);}
 
 std::ostream& read::operator<<(std::ostream& out) const {
-    return out << this->name() << " => ";
+    using namespace io::data;
+    out << this->name() << " => "
+        << this->bytes() << ':' << this->width();
+    return out;
 }
 
 write::write(OPCODE opcode, REG reg, const CONTEXT* ctx)
     : register_io(opcode, reg, ctx) {}
 
 std::ostream& write::operator<<(std::ostream& out) const {
-    return out << this->name() << " <= ";
+    using namespace io::data;
+    out << this->name() << " <= "
+        << this->bytes() << ':' << this->width();
+    return out;
 }
 // void write::accept(saver* s) { s->visit(*this); }
 

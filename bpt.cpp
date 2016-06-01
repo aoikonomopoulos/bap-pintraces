@@ -6,6 +6,8 @@
 
 #include <boost/range.hpp>
 #include <boost/bind.hpp>
+#include <boost/algorithm/string.hpp>
+
 #include "bpt.hpp"
 #include "bpt_events.hpp"
 #include "bpt_iarg_list.hpp"
@@ -73,6 +75,7 @@ void process_instruction(buffer& buff, INS ins) {
 #ifdef BPT_DEBUG
     static std::set<std::string> disasms;
     std::string d = INS_Disassemble(ins);
+    boost::algorithm::to_upper(d);
     const char* disasm = disasms.insert(d).first->c_str();
 #else
     const char* disasm = 0;
@@ -86,7 +89,7 @@ void process_instruction(buffer& buff, INS ins) {
                    IARG_UINT32, INS_Size(ins),
                    IARG_THREAD_ID,
                    IARG_END);
-    //process_regs(buff, ins);
+    process_regs(buff, ins);
     //process_mem(buff, ins);
 }
 

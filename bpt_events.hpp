@@ -33,6 +33,12 @@ struct operation : event {
     operation(const char*, OPCODE, ADDRINT, UINT32, THREADID);
 //    virtual void accept(saver*);
     virtual std::ostream& operator<<(std::ostream&) const;
+    OPCODE opcode() const;
+    ADDRINT addr() const;
+    THREADID tid() const;
+    std::string name() const;
+    const bytes_type& bytes() const;
+    const char* disasm() const;
 private:
     struct impl;
     boost::shared_ptr<impl> pimpl;
