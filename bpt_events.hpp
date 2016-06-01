@@ -1,5 +1,5 @@
-#ifndef BPT_EVENT_HPP
-#define BTP_EVENT_HPP
+#ifndef BPT_EVENTS_HPP
+#define BTP_EVENTS_HPP
 
 #include <vector>
 #include <string>
@@ -89,8 +89,6 @@ struct store : memory_io {
     virtual std::ostream& operator<<(std::ostream&) const;
 };
 
-// struct 
-
 }} //namespace bpt::events
 
-#endif //BPT_EVENT_HPP
+#endif //BPT_EVENTS_HPP

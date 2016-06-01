@@ -21,9 +21,12 @@ static void process_instruction(buffer&, INS);
 static void process_branching(buffer&, INS);
 static void process_regs(buffer&, INS);
 static void process_mem(buffer&, INS);
-static VOID handle_operation(buffer*, const char*, OPCODE, ADDRINT, UINT32, THREADID);
-static ADDRINT handle_reads(BOOL, buffer*, OPCODE, const CONTEXT*, UINT32, ...);
-static VOID handle_writes(buffer*, OPCODE, const CONTEXT*, UINT32, ...);
+static VOID handle_operation(buffer*, const char*,
+                             OPCODE, ADDRINT, UINT32, THREADID);
+static ADDRINT handle_reads(BOOL, buffer*,
+                            OPCODE, const CONTEXT*, UINT32, ...);
+static VOID handle_writes(buffer*,
+                          OPCODE, const CONTEXT*, UINT32, ...);
 static VOID handle_loads(buffer*, UINT32, ...);
 static VOID handle_stores(buffer*, UINT32, ...);
 

@@ -35,7 +35,11 @@ struct bytes_printer : std::binary_function<const std::string&,
         : out(o), sep(s) {}
     std::string operator()(const std::string& init, char b) {
         ios_flag_saver s(out);
-        out << init << std::hex << std::uppercase << std::setfill('0') << std::setw(2)
+        out << init
+            << std::hex
+            << std::uppercase
+            << std::setfill('0')
+            << std::setw(2)
             << static_cast<int>(static_cast<unsigned char>(b));
         return sep;
     }
@@ -88,8 +92,8 @@ struct operation::impl {
     bytes_type bytes;
 };
 
-operation::operation(const char* disasm, OPCODE opcode, ADDRINT addr, UINT32 size,
-                     THREADID tid)
+operation::operation(const char* disasm, OPCODE opcode,
+                     ADDRINT addr, UINT32 size, THREADID tid)
     : pimpl(new impl(disasm, opcode, addr, size, tid)) {}
 
 OPCODE operation::opcode() const {
@@ -141,7 +145,8 @@ struct register_io::impl {
         : opcode(op)
         , reg(REG_FullRegName(r))
         , bytes(REG_Size(reg)) {
-        PIN_GetContextRegval(ctx, reg, pointer_cast<UINT8*>(&bytes[0]));
+        PIN_GetContextRegval(ctx, reg,
+                             pointer_cast<UINT8*>(&bytes[0]));
     }
     OPCODE opcode;
     REG reg;
