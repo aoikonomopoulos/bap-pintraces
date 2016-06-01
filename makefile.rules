@@ -295,7 +295,7 @@ endif
 
 TOOL_LIBS += -L$(HOME)/opt/libtrace/lib -ltrace -lprotobuf -lz -lpthread
 
-TOOL_CXXFLAGS += -DUSING_PIN -I$(HOME)/opt/libtrace/include
+TOOL_CXXFLAGS += -DUSING_PIN -I$(HOME)/opt/libtrace/include -DBPT_DEBUG
 
 BAPOBJS = $(OBJDIR)pivot$(OBJ_SUFFIX) \
           $(OBJDIR)pin_misc$(OBJ_SUFFIX) \
@@ -307,7 +307,8 @@ $(OBJDIR)gentrace$(PINTOOL_SUFFIX): $(OBJDIR)gentrace$(OBJ_SUFFIX) $(BAPOBJS) $(
 	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$(OBJDIR)gentrace$(PINTOOL_SUFFIX)  $^ $(TOOL_LPATHS) $(TOOL_LIBS)
 
 
-BPTOBJS = $(OBJDIR)bpt$(OBJ_SUFFIX)
+BPTOBJS = $(OBJDIR)bpt$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_events$(OBJ_SUFFIX)
 
 $(OBJDIR)bpt$(PINTOOL_SUFFIX): $(OBJDIR)bpt_main$(OBJ_SUFFIX) $(BPTOBJS) $(LIBTRACE)
 	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$(OBJDIR)bpt$(PINTOOL_SUFFIX)  $^ $(TOOL_LPATHS) $(TOOL_LIBS)

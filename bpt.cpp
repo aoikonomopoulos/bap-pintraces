@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <vector>
+#include <set>
 
 #include <boost/range.hpp>
 #include <boost/bind.hpp>
@@ -10,18 +12,18 @@
 
 namespace bpt {
 
-typedef std::vector<events::event_ptr> buffer;
 
-void process_block(buffer&, BBL);
-void process_instruction(buffer&, INS);
-void process_branching(buffer&, INS);
-void process_regs(buffer&, INS);
-void process_mem(buffer&, INS);
-VOID handle_instruction(buffer*, OPCODE, ADDRINT, UINT32, THREADID);
-VOID handle_reads(buffer*, OPCODE, const CONTEXT*, UINT32, ...);
-VOID handle_writes(buffer*, OPCODE, const CONTEXT*, UINT32, ...);
-VOID handle_loads(buffer*, UINT32, ...);
-VOID handle_stores(buffer*, UINT32, ...);
+typedef  std::vector<events::event_ptr> buffer;
+static void process_block(buffer&, BBL);
+static void process_instruction(buffer&, INS);
+static void process_branching(buffer&, INS);
+static void process_regs(buffer&, INS);
+static void process_mem(buffer&, INS);
+static VOID handle_operation(buffer*, const char*, OPCODE, ADDRINT, UINT32, THREADID);
+static ADDRINT handle_reads(BOOL, buffer*, OPCODE, const CONTEXT*, UINT32, ...);
+static VOID handle_writes(buffer*, OPCODE, const CONTEXT*, UINT32, ...);
+//static VOID handle_loads(buffer*, UINT32, ...);
+//static VOID handle_stores(buffer*, UINT32, ...);
 
 struct tracer {
     static void trace(TRACE trace, saver* out) {
@@ -46,6 +48,8 @@ private:
     }
 };
 
+buffer tracer::buff;
+
 VOID trace(TRACE trace, saver* out) { tracer::trace(trace, out); }
 VOID fini(INT32 code, saver* out) { tracer::fini(code, out); }
 
@@ -66,16 +70,24 @@ void process_block(buffer& buff, BBL b) {
 }
 
 void process_instruction(buffer& buff, INS ins) {
+#ifdef BPT_DEBUG
+    static std::set<std::string> disasms;
+    std::string d = INS_Disassemble(ins);
+    const char* disasm = disasms.insert(d).first->c_str();
+#else
+    const char* disasm = 0;
+#endif
     INS_InsertCall(ins,
-                   IPOINT_BEFORE, (AFUNPTR)(handle_instruction),
+                   IPOINT_BEFORE, (AFUNPTR)(handle_operation),
                    IARG_PTR, &buff,
+                   IARG_PTR, disasm,
                    IARG_UINT32, INS_Opcode(ins),
                    IARG_INST_PTR,
                    IARG_UINT32, INS_Size(ins),
                    IARG_THREAD_ID,
                    IARG_END);
-    process_regs(buff, ins);
-    process_mem(buff, ins);
+    //process_regs(buff, ins);
+    //process_mem(buff, ins);
 }
 
 void process_regs(buffer& buff, INS ins) {
@@ -84,14 +96,16 @@ void process_regs(buffer& buff, INS ins) {
     for (UINT32 i = 0, I = INS_OperandCount(ins); i < I; ++i) {
         if (INS_OperandIsReg(ins, i)) {
             REG reg = INS_OperandReg(ins, i);
-            if (INS_OperandRead(ins, i)) reads(IARG_UINT32, reg);
-            if (INS_OperandWritten(ins, i)) {
-                writes(IARG_UINT32, reg);
+            if (REG_valid(reg)) {
+                if (INS_OperandRead(ins, i)) reads(IARG_UINT32, reg);
+                if (INS_OperandWritten(ins, i)) {
+                    writes(IARG_UINT32, reg);
 
-                /* this is special case, when writes occure
-                   to the part of GPR */
-                if (REG_is_gr16(reg) || REG_is_gr8(reg)) {
-                    reads(IARG_UINT32, reg);
+                    /* this is special case, when writes occure
+                       to the part of GPR */
+                    if (REG_is_gr16(reg) || REG_is_gr8(reg)) {
+                        reads(IARG_UINT32, reg);
+                    }
                 }
             }
 
@@ -108,26 +122,66 @@ void process_regs(buffer& buff, INS ins) {
             case REG_SEG_GS:
                 reads(IARG_UINT32, REG_SEG_GS_BASE);
                 break;
-            default: break;
+            case REG_INVALID_: break;
+            default:
+                std::cerr << "warning: untraceable segment "
+                          << REG_StringShort(seg)
+                          << "in instruction "
+                          << INS_Disassemble(ins)
+                          << std::endl;
             }
 
             REG base = INS_OperandMemoryBaseReg(ins, i);
-            if (REG_valid(base)) reads(IARG_UINT32, base);
+            if (REG_valid(base) && base != REG_INST_PTR) {
+                reads(IARG_UINT32, base);
+            }
+            REG index = INS_OperandMemoryIndexReg(ins, i);
+            if (REG_valid(index)) reads(IARG_UINT32, index);
         }
     }
-    INS_InsertCall(ins, IPOINT_BEFORE,
-                   (AFUNPTR)(handle_reads),
-                   IARG_PTR, &buff,
-                   IARG_UINT32, INS_Opcode(ins),
-                   IARG_CONST_CONTEXT,
-                   IARG_UINT32, reads.size(),
-                   IARG_IARGLIST, reads.value(),
-                   IARG_END);
+
+    iarg_list common;
+    common(IARG_PTR, &buff)
+        (IARG_UINT32, INS_Opcode(ins))
+        (IARG_CONST_CONTEXT);
+
+    if (INS_IsPredicated(ins)) {
+        iarg_list preds;
+        if (INS_HasRealRep(ins)) {
+            preds(IARG_UINT32, INS_RepCountRegister(ins));
+        }
+
+        if (INS_RegRContain(ins, REG_AppFlags())) {
+            preds(IARG_UINT32, REG_AppFlags());
+        }
+        INS_InsertIfCall(ins, IPOINT_BEFORE,
+                         (AFUNPTR)(handle_reads),
+                         IARG_EXECUTING,
+                         IARG_IARGLIST, common.value(),
+                         IARG_UINT32, reads.size(),
+                         IARG_IARGLIST, reads.value(),
+                         IARG_END);
+        INS_InsertThenPredicatedCall(ins, IPOINT_BEFORE,
+                                     (AFUNPTR)(handle_reads),
+                                     IARG_BOOL, true,
+                                     IARG_IARGLIST, common.value(),
+                                     IARG_UINT32, preds.size(),
+                                     IARG_IARGLIST, preds.value(),
+                                     IARG_END);
+    } else {
+        INS_InsertCall(ins, IPOINT_BEFORE,
+                       (AFUNPTR)(handle_reads),
+                       IARG_BOOL, true,
+                       IARG_IARGLIST, common.value(),
+                       IARG_UINT32, reads.size(),
+                       IARG_IARGLIST, reads.value(),
+                       IARG_END);
+
+    }
+    
     INS_InsertPredicatedCall(ins, IPOINT_AFTER,
-                             (AFUNPTR)(handle_writes),
-                             IARG_PTR, &buff,
-                             IARG_UINT32, INS_Opcode(ins),
-                             IARG_CONST_CONTEXT,
+                             (AFUNPTR)(&handle_writes),
+                             IARG_IARGLIST, common.value(),
                              IARG_UINT32, writes.size(),
                              IARG_IARGLIST, writes.value(),
                              IARG_END);
@@ -147,6 +201,7 @@ void process_mem(buffer& buff, INS ins) {
                    IARG_UINT32, INS_MemoryReadSize(ins));
         }
     }
+/*
     INS_InsertCall(ins, IPOINT_BEFORE,
                    (AFUNPTR)(handle_loads),
                    IARG_PTR, &buff,
@@ -159,19 +214,47 @@ void process_mem(buffer& buff, INS ins) {
                              IARG_UINT32, stores.size(),
                              IARG_IARGLIST, stores.value(),
                              IARG_END);
+*/
 }
 
 
+VOID handle_operation(buffer* buff, const char* disasm, OPCODE opcode,
+                      ADDRINT addr, UINT32 size, THREADID tid) {
+    events::event_ptr e(new events::operation(disasm, opcode, addr,
+                                              size, tid));
+    buff->push_back(e);
 
+}
 
-void process_branching(buffer& buff, saver* out, INS ins) {
-    // INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)(handle_branch),
-    //                IARG_PTR, out,
-    //                IARG_UINT32, buff.tc,
-    //                IARG_UINT32, buff.bc,
-    //                IARG_UINT32, buff.ic,
-    //                IARG_UINT32, INS_Opcode(ins),
-    //                IARG_END);
+static ADDRINT handle_reads(BOOL exec, buffer* buff, OPCODE opcode,
+                            const CONTEXT* ctx, UINT32 args_count, ...) {
+    if (exec) {
+        va_list args;
+        va_start(args, args_count);
+        for (UINT32 i=0; i < args_count; ++i) {
+            REG reg = static_cast<REG>(va_arg(args, UINT32));
+            events::event_ptr e(new events::read(opcode, reg, ctx));
+            buff->push_back(e);
+        }
+        va_end(args);
+    }
+    return exec ? 0 : 1;
+}
+
+static VOID handle_writes(buffer* buff, OPCODE opcode,
+                          const CONTEXT* ctx, UINT32 args_count, ...) {
+    va_list args;
+    va_start(args, args_count);
+    for (UINT32 i=0; i < args_count; ++i) {
+        REG reg = static_cast<REG>(va_arg(args, UINT32));
+        events::event_ptr e(new events::write(opcode, reg, ctx));
+        buff->push_back(e);
+    }
+    va_end(args);
+}
+
+void process_branching(buffer& buff, INS ins) {
+    /*FIXME: unimplemented*/
 }
 
 // VOID handle_operation(saver* out, UINT32 tc, UINT32 bc, UINT32 ic, UINT32 opcode) {

@@ -42,13 +42,13 @@ INT32 usage() {
 }
 
 VOID fini(INT32 code, VOID* ptr) {
-    bpt::saver* out = static_cast<std::ostream*>(ptr);
+    bpt::saver* out = static_cast<bpt::saver*>(ptr);
     bpt::fini(code, out);
     delete out;
 }
 
 VOID trace(TRACE trace, VOID* ptr) {
-    bpt::saver* out = static_cast<std::ostream*>(ptr);
+    bpt::saver* out = static_cast<bpt::saver*>(ptr);
     bpt::trace(trace, out);
 }
 

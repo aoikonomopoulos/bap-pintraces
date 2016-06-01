@@ -1,10 +1,10 @@
 #ifndef BPT_HPP
 #define BPT_HPP
 
-#include "pin.H"
+#include <pin.H>
 
 namespace bpt {
-struct saver;
+typedef std::ostream saver;
 VOID trace(TRACE, saver*);
 VOID fini(INT32 code, saver*);
 
