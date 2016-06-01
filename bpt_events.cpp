@@ -74,11 +74,7 @@ std::ostream& operator<<(std::ostream& out,
 //operation event
 struct operation::impl {
     impl(const char* d, OPCODE o, ADDRINT a, UINT32 size, THREADID t)
-#ifdef BPT_DEBUG
         : disasm(d)
-#else
-        : disasm("")
-#endif
         , opcode(o)
         , addr(a)
         , tid(t)
@@ -147,8 +143,6 @@ struct register_io::impl {
         , bytes(REG_Size(reg)) {
         PIN_GetContextRegval(ctx, reg, pointer_cast<UINT8*>(&bytes[0]));
     }
-
-    
     OPCODE opcode;
     REG reg;
     bytes_type bytes;
@@ -201,6 +195,9 @@ read::read(OPCODE opcode, REG reg, const CONTEXT* ctx)
 
 // void read::accept(saver* out) { s->visit(*this);}
 
+write::write(OPCODE opcode, REG reg, const CONTEXT* ctx)
+    : register_io(opcode, reg, ctx) {}
+
 std::ostream& read::operator<<(std::ostream& out) const {
     using namespace io::data;
     out << this->name() << " => "
@@ -208,15 +205,72 @@ std::ostream& read::operator<<(std::ostream& out) const {
     return out;
 }
 
-write::write(OPCODE opcode, REG reg, const CONTEXT* ctx)
-    : register_io(opcode, reg, ctx) {}
-
 std::ostream& write::operator<<(std::ostream& out) const {
     using namespace io::data;
     out << this->name() << " <= "
         << this->bytes() << ':' << this->width();
     return out;
 }
+
+//memory load/store
+
+struct memory_io::impl {
+    impl(ADDRINT a, UINT32 size)
+        : addr(a)
+        , bytes(size) {
+        PIN_SafeCopy(static_cast<VOID*>(&bytes[0]),
+                     reinterpret_cast<VOID*>(addr), size);
+    }
+    ADDRINT addr;
+    bytes_type bytes;
+};
+
+memory_io::memory_io(ADDRINT addr, UINT32 size)
+    : pimpl(new impl(addr, size)) {}
+
+ADDRINT memory_io::addr() const {
+    return pimpl->addr;
+}
+
+const bytes_type& memory_io::bytes() const {
+    return pimpl->bytes;
+}
+
+load::load(ADDRINT addr, UINT32 size) : memory_io(addr, size) {}
+
+store::store(ADDRINT addr, UINT32 size) : memory_io(addr, size) {}
+
+std::ostream& load::operator<<(std::ostream& out) const {
+    using namespace io::code;
+    return out << "0x"
+               << std::hex
+               << std::uppercase
+               << this->addr()
+               << std::dec
+               << ':'
+               << sizeof(ADDRINT)*8
+               << " => "
+               << this->bytes()
+               << ':'
+               << this->bytes().size()*8;
+}
+
+std::ostream& store::operator<<(std::ostream& out) const {
+    using namespace io::code;
+    return out << "0x"
+               << std::hex
+               << std::uppercase
+               << this->addr()
+               << std::dec
+               << ':'
+               << sizeof(ADDRINT)*8
+               << " <= "
+               << this->bytes()
+               << ':'
+               << this->bytes().size()*8;
+}
+
+
 // void write::accept(saver* s) { s->visit(*this); }
 
 }} //namespace bpt::events

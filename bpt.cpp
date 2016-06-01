@@ -24,8 +24,8 @@ static void process_mem(buffer&, INS);
 static VOID handle_operation(buffer*, const char*, OPCODE, ADDRINT, UINT32, THREADID);
 static ADDRINT handle_reads(BOOL, buffer*, OPCODE, const CONTEXT*, UINT32, ...);
 static VOID handle_writes(buffer*, OPCODE, const CONTEXT*, UINT32, ...);
-//static VOID handle_loads(buffer*, UINT32, ...);
-//static VOID handle_stores(buffer*, UINT32, ...);
+static VOID handle_loads(buffer*, UINT32, ...);
+static VOID handle_stores(buffer*, UINT32, ...);
 
 struct tracer {
     static void trace(TRACE trace, saver* out) {
@@ -78,7 +78,7 @@ void process_instruction(buffer& buff, INS ins) {
     boost::algorithm::to_upper(d);
     const char* disasm = disasms.insert(d).first->c_str();
 #else
-    const char* disasm = 0;
+    const char* disasm = "N/A";
 #endif
     INS_InsertCall(ins,
                    IPOINT_BEFORE, (AFUNPTR)(handle_operation),
@@ -90,7 +90,7 @@ void process_instruction(buffer& buff, INS ins) {
                    IARG_THREAD_ID,
                    IARG_END);
     process_regs(buff, ins);
-    //process_mem(buff, ins);
+    process_mem(buff, ins);
 }
 
 void process_regs(buffer& buff, INS ins) {
@@ -205,20 +205,19 @@ void process_mem(buffer& buff, INS ins) {
                    IARG_UINT32, INS_MemoryReadSize(ins));
         }
     }
-/*
-    INS_InsertCall(ins, IPOINT_BEFORE,
-                   (AFUNPTR)(handle_loads),
-                   IARG_PTR, &buff,
-                   IARG_UINT32, loads.size(),
-                   IARG_IARGLIST, loads.value(),
-                   IARG_END);
+
+    INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
+                             (AFUNPTR)(handle_loads),
+                             IARG_PTR, &buff,
+                             IARG_UINT32, loads.size(),
+                             IARG_IARGLIST, loads.value(),
+                             IARG_END);
     INS_InsertPredicatedCall(ins, IPOINT_AFTER,
                              (AFUNPTR)(handle_stores),
                              IARG_PTR, &buff,
                              IARG_UINT32, stores.size(),
                              IARG_IARGLIST, stores.value(),
                              IARG_END);
-*/
 }
 
 
@@ -257,18 +256,32 @@ static VOID handle_writes(buffer* buff, OPCODE opcode,
     va_end(args);
 }
 
+static VOID handle_loads(buffer* buff, UINT32 args_count, ...) {
+    va_list args;
+    va_start(args, args_count);
+    for (UINT32 i=0; i < args_count; i+=2) {
+        ADDRINT addr = va_arg(args, ADDRINT);
+        UINT32 size = va_arg(args, UINT32);
+        events::event_ptr e(new events::load(addr, size));
+        buff->push_back(e);
+    }
+    va_end(args);
+}
+
+static VOID handle_stores(buffer* buff, UINT32 args_count, ...) {
+    va_list args;
+    va_start(args, args_count);
+    for (UINT32 i=0; i < args_count; i+=2) {
+        ADDRINT addr = va_arg(args, ADDRINT);
+        UINT32 size = va_arg(args, UINT32);
+        events::event_ptr e(new events::store(addr, size));
+        buff->push_back(e);
+    }
+    va_end(args);
+}
+
 void process_branching(buffer& buff, INS ins) {
     /*FIXME: unimplemented*/
 }
 
-// VOID handle_operation(saver* out, UINT32 tc, UINT32 bc, UINT32 ic, UINT32 opcode) {
-//     *out << tc << "." << bc << "." << ic << ": " << OPCODE_StringShort(opcode) << std::endl;
-// }
-
-// VOID handle_tail(saver* out, UINT32 tc, UINT32 bc, UINT32 ic, UINT32 opcode) {
-//     *out << "TAIL: " << tc << "." << bc << "." << ic << ": " << OPCODE_StringShort(opcode) << std::endl;
-// }
-
-
-
-}
+} //namespace bpt

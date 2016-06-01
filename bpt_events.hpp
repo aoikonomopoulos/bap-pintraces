@@ -68,24 +68,26 @@ struct write : register_io {
 };
 
 
-// struct memory : event {
-//     memory(ADDRINT addr, UINT32 size);
-// private:
-//     struct impl;
-//     boost::shared_ptr<impl> pimpl;
-// };
+struct memory_io : event {
+    memory_io(ADDRINT addr, UINT32 size);
+    const bytes_type& bytes() const;
+    ADDRINT addr() const;
+private:
+    struct impl;
+    boost::shared_ptr<impl> pimpl;
+};
 
-// struct load : memory {
-//     memory(ADDRINT addr, UINT32 size);
-//     void accept(saver&);
-//     std::ostream& operator<<(std::ostream&);
-// }
+struct load : memory_io {
+    load(ADDRINT addr, UINT32 size);
+    //virtual void accept(saver*);
+    virtual std::ostream& operator<<(std::ostream&) const;
+};
 
-// struct store : memory {
-//     memory(ADDRINT addr, UINT32 size);
-//     void accept(saver&);
-//     std::ostream& operator<<(std::ostream&);
-// };
+struct store : memory_io {
+    store(ADDRINT addr, UINT32 size);
+    //virtual void accept(saver*);
+    virtual std::ostream& operator<<(std::ostream&) const;
+};
 
 // struct 
 
