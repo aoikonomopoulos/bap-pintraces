@@ -68,11 +68,7 @@ static void process_block(buffer& buff, BBL b) {
     }
 
     INS tail = BBL_InsTail(b);
-    if (INS_HasRealRep(tail)) {
-        process_instruction(buff, tail);
-    } else {
-        process_branching(buff, tail);
-    }
+    process_branching(buff, tail);
 }
 
 static void process_instruction(buffer& buff, INS ins) {
@@ -152,17 +148,7 @@ static void process_regs(buffer& buff, INS ins) {
 static void process_mem(buffer& buff, INS ins) {
     args_list loads;
     args_list stores;
-    for (UINT32 i = 0, I = INS_MemoryOperandCount(ins); i < I; ++i) {
-        if (INS_MemoryOperandIsRead(ins, i)) {
-            loads(IARG_MEMORYOP_EA, i,
-                  IARG_UINT32, INS_MemoryReadSize(ins));
-        }
-
-        if (INS_MemoryOperandIsWritten(ins, i)) {
-            stores(IARG_MEMORYOP_EA, i,
-                   IARG_UINT32, INS_MemoryReadSize(ins));
-        }
-    }
+    inspect_inst_mem(ins, loads, stores);
 
     INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
                              (AFUNPTR)(handle_loads),
@@ -240,8 +226,12 @@ static VOID handle_stores(buffer* buff, UINT32 args_count, ...) {
 }
 
 static void process_branching(buffer& buff, INS ins) {
-    /*FIXME: unimplemented*/
-    std::cerr << "B: " <<INS_Disassemble(ins) << std::endl;
+    if (INS_HasRealRep(tail)) {
+        process_instruction(buff, ins);
+    } else {
+        /*FIXME: unimplemented*/
+        std::cerr << "B: " <<INS_Disassemble(ins) << std::endl;
+    }
 }
 
 } //namespace bpt
