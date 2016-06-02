@@ -2,7 +2,6 @@
 #define BAP_WRITER_TEXT_HPP
 
 #include <fstream>
-#include "bpt_fwd.hpp"
 #include "bpt_writer.hpp"
 
 namespace bpt {
