@@ -2,11 +2,13 @@
 #define BPT_HPP
 
 #include <pin.H>
+#include "bpt_fwd.hpp"
 
 namespace bpt {
-typedef std::ostream saver;
-VOID trace(TRACE, saver*);
-VOID fini(INT32 code, saver*);
+
+VOID trace(TRACE, writer*);
+VOID fini(INT32 code, writer*);
+
 }
 
 #endif //BPT_HPP

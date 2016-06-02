@@ -2,7 +2,7 @@
 #include <iostream>
 #include <pin.H>
 #include "bpt.hpp"
-
+#include "bpt_writer_text.hpp"
 KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
                        "o", "trace.frames",
                        "Trace file to output to.");
@@ -42,13 +42,13 @@ INT32 usage() {
 }
 
 VOID fini(INT32 code, VOID* ptr) {
-    bpt::saver* out = static_cast<bpt::saver*>(ptr);
+    bpt::writer* out = static_cast<bpt::writer*>(ptr);
     bpt::fini(code, out);
     delete out;
 }
 
 VOID trace(TRACE trace, VOID* ptr) {
-    bpt::saver* out = static_cast<bpt::saver*>(ptr);
+    bpt::writer* out = static_cast<bpt::writer*>(ptr);
     bpt::trace(trace, out);
 }
 
@@ -56,8 +56,7 @@ int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
 
-    bpt::saver* out  = new std::ofstream(tracefile.Value().c_str(),
-                                         std::ofstream::out);
+    bpt::writer* out = new bpt::writer_text(tracefile.Value().c_str());
 
     TRACE_AddInstrumentFunction(trace, static_cast<VOID*>(out));
 

@@ -12,11 +12,10 @@
 #include "bpt_events.hpp"
 #include "bpt_args_list.hpp"
 #include "bpt_inspection.hpp"
-
+#include "bpt_writer.hpp"
 namespace bpt {
 
-
-typedef  std::vector<events::event_ptr> buffer;
+typedef  std::vector<event_ptr> buffer;
 static void process_block(buffer&, BBL);
 static void process_instruction(buffer&, INS);
 static void process_branching(buffer&, INS);
@@ -32,7 +31,7 @@ static VOID handle_loads(buffer*, UINT32, ...);
 static VOID handle_stores(buffer*, UINT32, ...);
 
 struct tracer {
-    static void trace(TRACE trace, saver* out) {
+    static void trace(TRACE trace, writer& out) {
         flush(out);
         for(BBL b = TRACE_BblHead(trace);
             BBL_Valid(b); b = BBL_Next(b)) {
@@ -40,24 +39,23 @@ struct tracer {
         }
     }
 
-    static void fini(INT32, saver* out) {
+    static void fini(INT32, writer& out) {
         flush(out);
     }
 private:
     static buffer buff;
-    static void flush(saver* out) {
-        using namespace events;
+    static void flush(writer& out) {
         std::for_each(boost::begin(buff),
                       boost::end(buff),
-                      boost::bind(&event::accept, _1, out));
+                      boost::bind(&event::accept, _1, boost::ref(out)));
         buff.clear();
     }
 };
 
 buffer tracer::buff;
 
-VOID trace(TRACE trace, saver* out) { tracer::trace(trace, out); }
-VOID fini(INT32 code, saver* out) { tracer::fini(code, out); }
+VOID trace(TRACE trace, writer* out) { tracer::trace(trace, *out); }
+VOID fini(INT32 code, writer* out) { tracer::fini(code, *out); }
 
 static void process_block(buffer& buff, BBL b) {
     INS ins = BBL_InsHead(b);
@@ -168,8 +166,7 @@ static void process_mem(buffer& buff, INS ins) {
 static VOID handle_operation(buffer* buff, const char* disasm,
                              OPCODE opcode, ADDRINT addr, UINT32 size,
                              THREADID tid) {
-    events::event_ptr e(new events::operation(disasm, opcode, addr,
-                                              size, tid));
+    event_ptr e(new operation_event(disasm, opcode, addr, size, tid));
     buff->push_back(e);
 
 }
@@ -181,7 +178,9 @@ static ADDRINT handle_reads(BOOL exec, buffer* buff, OPCODE opcode,
         va_start(args, args_count);
         for (UINT32 i=0; i < args_count; ++i) {
             REG reg = static_cast<REG>(va_arg(args, UINT32));
-            events::event_ptr e(new events::read(opcode, reg, ctx));
+            event_ptr e(REG_is_flags(reg) ?
+                        new read_event(opcode, reg, ctx) :
+                        new read_flags_event(opcode, reg, ctx));
             buff->push_back(e);
         }
         va_end(args);
@@ -195,7 +194,9 @@ static VOID handle_writes(buffer* buff, OPCODE opcode,
     va_start(args, args_count);
     for (UINT32 i=0; i < args_count; ++i) {
         REG reg = static_cast<REG>(va_arg(args, UINT32));
-        events::event_ptr e(new events::write(opcode, reg, ctx));
+        event_ptr e(REG_is_flags(reg) ?
+                    new write_event(opcode, reg, ctx) :
+                    new write_flags_event(opcode, reg, ctx));
         buff->push_back(e);
     }
     va_end(args);
@@ -207,7 +208,7 @@ static VOID handle_loads(buffer* buff, UINT32 args_count, ...) {
     for (UINT32 i=0; i < args_count; i+=2) {
         ADDRINT addr = va_arg(args, ADDRINT);
         UINT32 size = va_arg(args, UINT32);
-        events::event_ptr e(new events::load(addr, size));
+        event_ptr e(new load_event(addr, size));
         buff->push_back(e);
     }
     va_end(args);
@@ -219,14 +220,14 @@ static VOID handle_stores(buffer* buff, UINT32 args_count, ...) {
     for (UINT32 i=0; i < args_count; i+=2) {
         ADDRINT addr = va_arg(args, ADDRINT);
         UINT32 size = va_arg(args, UINT32);
-        events::event_ptr e(new events::store(addr, size));
+        event_ptr e(new store_event(addr, size));
         buff->push_back(e);
     }
     va_end(args);
 }
 
 static void process_branching(buffer& buff, INS ins) {
-    if (INS_HasRealRep(tail)) {
+    if (INS_HasRealRep(ins)) {
         process_instruction(buff, ins);
     } else {
         /*FIXME: unimplemented*/

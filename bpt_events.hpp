@@ -4,48 +4,39 @@
 #include <vector>
 #include <string>
 
-#include <boost/shared_ptr.hpp>
-
 #include <pin.H>
 
-#include "bpt_saver.hpp"
+#include "bpt_fwd.hpp"
 
 namespace bpt {
 
-namespace events {
-
-struct event;
-
-std::ostream& operator<<(std::ostream& out, const event& e);
-
 struct event {
-    // virtual void accept(saver*) = 0;
+    void accept(writer&);
+    virtual ~event();
     virtual std::ostream& operator<<(std::ostream&) const = 0;
-    virtual void accept(saver* out) { *out << *this << std::endl; }
-    virtual ~event() {};
-
+private:
+    virtual void do_accept(writer&) const = 0;
 };
 
-typedef boost::shared_ptr<event> event_ptr;
-typedef std::vector<char> bytes_type;
+std::ostream& operator<<(std::ostream&, const event&);
 
-struct operation : event {
-    operation(const char*, OPCODE, ADDRINT, UINT32, THREADID);
-//    virtual void accept(saver*);
-    virtual std::ostream& operator<<(std::ostream&) const;
+struct operation_event : event {
+    operation_event(const char*, OPCODE, ADDRINT, UINT32, THREADID);
     OPCODE opcode() const;
     ADDRINT addr() const;
     THREADID tid() const;
     std::string name() const;
     const bytes_type& bytes() const;
     const char* disasm() const;
+    virtual std::ostream& operator<<(std::ostream&) const;
 private:
+    virtual void do_accept(writer&) const;
     struct impl;
     boost::shared_ptr<impl> pimpl;
 };
 
-struct register_io : event {
-    register_io(OPCODE, REG, const CONTEXT*);
+struct register_event : event {
+    register_event(OPCODE, REG, const CONTEXT*);
     const bytes_type& bytes() const;
     std::size_t width() const;
     std::string name() const;
@@ -55,21 +46,8 @@ private:
     boost::shared_ptr<impl> pimpl;
 };
 
-struct read : register_io {
-    read(OPCODE, REG, const CONTEXT*);
-    // virtual void accept(saver*);
-    virtual std::ostream& operator<<(std::ostream&) const;
-};
-
-struct write : register_io {
-    write(OPCODE, REG, const CONTEXT*);
-    // virtual void accept(saver*);
-    virtual std::ostream& operator<<(std::ostream&) const;
-};
-
-
-struct memory_io : event {
-    memory_io(ADDRINT addr, UINT32 size);
+struct memory_event : event {
+    memory_event(ADDRINT addr, UINT32 size);
     const bytes_type& bytes() const;
     ADDRINT addr() const;
 private:
@@ -77,18 +55,42 @@ private:
     boost::shared_ptr<impl> pimpl;
 };
 
-struct load : memory_io {
-    load(ADDRINT addr, UINT32 size);
-    //virtual void accept(saver*);
+struct read_event : register_event {
+    read_event(OPCODE, REG, const CONTEXT*);
     virtual std::ostream& operator<<(std::ostream&) const;
+private:
+    virtual void do_accept(writer&) const;
 };
 
-struct store : memory_io {
-    store(ADDRINT addr, UINT32 size);
-    //virtual void accept(saver*);
+struct write_event : register_event {
+    write_event(OPCODE, REG, const CONTEXT*);
     virtual std::ostream& operator<<(std::ostream&) const;
+private:
+    virtual void do_accept(writer&) const;
 };
 
-}} //namespace bpt::events
+struct read_flags_event : read_event {
+   read_flags_event(OPCODE, REG, const CONTEXT*);
+};
+
+struct write_flags_event : write_event {
+   write_flags_event(OPCODE, REG, const CONTEXT*);
+};
+
+struct load_event : memory_event {
+    load_event(ADDRINT addr, UINT32 size);
+    virtual std::ostream& operator<<(std::ostream&) const;
+private:
+    virtual void do_accept(writer&) const;
+};
+
+struct store_event : memory_event {
+    store_event(ADDRINT addr, UINT32 size);
+    virtual std::ostream& operator<<(std::ostream&) const;
+private:
+    virtual void do_accept(writer&) const;
+};
+
+} //namespace bpt
 
 #endif //BPT_EVENTS_HPP

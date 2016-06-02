@@ -310,7 +310,16 @@ $(OBJDIR)gentrace$(PINTOOL_SUFFIX): $(OBJDIR)gentrace$(OBJ_SUFFIX) $(BAPOBJS) $(
 BPTOBJS = $(OBJDIR)bpt$(OBJ_SUFFIX) \
           $(OBJDIR)bpt_args_list$(OBJ_SUFFIX) \
           $(OBJDIR)bpt_inspection$(OBJ_SUFFIX) \
-          $(OBJDIR)bpt_events$(OBJ_SUFFIX)
+          $(OBJDIR)bpt_events$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_bytes_io$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_operation_event$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_register_events$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_flags_events$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_memory_events$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_writer$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_writer_text$(OBJ_SUFFIX)
+          
+
 
 $(OBJDIR)bpt$(PINTOOL_SUFFIX): $(OBJDIR)bpt_main$(OBJ_SUFFIX) $(BPTOBJS) $(LIBTRACE)
 	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$(OBJDIR)bpt$(PINTOOL_SUFFIX)  $^ $(TOOL_LPATHS) $(TOOL_LIBS)
