@@ -1,6 +1,6 @@
 #include <fstream>
 #include <iostream>
-#include "pin.H"
+#include <pin.H>
 #include "bpt.hpp"
 
 KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",

@@ -143,7 +143,7 @@ std::ostream& operation::operator<<(std::ostream& out) const {
 struct register_io::impl {
     impl(OPCODE op, REG r, const CONTEXT* ctx)
         : opcode(op)
-        , reg(REG_FullRegName(r))
+        , reg(r)
         , bytes(REG_Size(reg)) {
         PIN_GetContextRegval(ctx, reg,
                              pointer_cast<UINT8*>(&bytes[0]));
