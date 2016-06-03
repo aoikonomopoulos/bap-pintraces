@@ -3,6 +3,8 @@
 #include <pin.H>
 #include "bpt.hpp"
 #include "bpt_writer_text.hpp"
+#include "bpt_writer_frames.hpp"
+
 KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
                        "o", "trace.frames",
                        "Trace file to output to.");
@@ -56,7 +58,7 @@ int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
 
-    bpt::visitor* out = new bpt::writer_text(tracefile.Value().c_str());
+    bpt::visitor* out = new bpt::writer_frames(tracefile.Value().c_str());
 
     TRACE_AddInstrumentFunction(trace, static_cast<VOID*>(out));
 

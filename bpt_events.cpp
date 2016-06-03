@@ -9,7 +9,7 @@
 
 namespace bpt {
 
-void event::accept(writer& out) { do_accept(out); }
+void event::accept(visitor& out) { do_accept(out); }
 event::~event() {}
 
 std::ostream& operator<<(std::ostream& out, const event& e) {
