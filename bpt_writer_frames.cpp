@@ -37,7 +37,7 @@ struct std_frame_element : boost::noncopyable {
     void add(const store_event& e) { add(W, e); }
     void add(const read_flags_event& e) {
         BOOST_FOREACH(const flag& f, e.flags()) {
-            if (f.effect(e.opcode()) & TST) {
+            if (f.effect() & RD) {
                 bytes_type::value_type b(f.value(e.bytes()));
                 add(R, f.name(), bytes_type(1, b), f.width());
             }
@@ -45,7 +45,7 @@ struct std_frame_element : boost::noncopyable {
     }
     void add(const write_flags_event& e) {
         BOOST_FOREACH(const flag& f, e.flags()) {
-            if (f.effect(e.opcode()) & (CLR | SET | AH | MOD | POP | UND)) {
+            if (f.effect() & WR) {
                 bytes_type::value_type b(f.value(e.bytes()));
                 add(R, f.name(), bytes_type(1, b), f.width());
             }

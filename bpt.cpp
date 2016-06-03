@@ -179,8 +179,8 @@ static ADDRINT handle_reads(BOOL exec, buffer* buff, OPCODE opcode,
         for (UINT32 i=0; i < args_count; ++i) {
             REG reg = static_cast<REG>(va_arg(args, UINT32));
             event_ptr e(REG_is_flags(reg) ?
-                        new read_event(opcode, reg, ctx) :
-                        new read_flags_event(opcode, reg, ctx));
+                        new read_flags_event(opcode, reg, ctx) :
+                        new read_event(opcode, reg, ctx));
             buff->push_back(e);
         }
         va_end(args);
@@ -195,8 +195,8 @@ static VOID handle_writes(buffer* buff, OPCODE opcode,
     for (UINT32 i=0; i < args_count; ++i) {
         REG reg = static_cast<REG>(va_arg(args, UINT32));
         event_ptr e(REG_is_flags(reg) ?
-                    new write_event(opcode, reg, ctx) :
-                    new write_flags_event(opcode, reg, ctx));
+                    new write_flags_event(opcode, reg, ctx) :
+                    new write_event(opcode, reg, ctx));
         buff->push_back(e);
     }
     va_end(args);
@@ -231,7 +231,7 @@ static void process_branching(buffer& buff, INS ins) {
         process_instruction(buff, ins);
     } else {
         /*FIXME: unimplemented*/
-        std::cerr << "B: " <<INS_Disassemble(ins) << std::endl;
+        //std::cerr << "B: " <<INS_Disassemble(ins) << std::endl;
     }
 }
 

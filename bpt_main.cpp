@@ -7,11 +7,8 @@
 
 KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
                        "o", "trace.frames",
-                       "Trace file to output to.");
-
-KNOB<string> format(KNOB_MODE_WRITEONCE, "pintool",
-                    "fmt", "frames",
-                    "Trace output format (text | frames).");
+                       "Trace file to output to "
+                       "(filename.{frames | txt})");
 
 KNOB<string> split(KNOB_MODE_WRITEONCE, "pintool",
                    "split-flags", "insn",
@@ -58,7 +55,17 @@ int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
 
-    bpt::visitor* out = new bpt::writer_frames(tracefile.Value().c_str());
+    bpt::visitor* out;    
+    std::string file = tracefile.Value();
+    std::string fmt = file.substr(file.find_last_of(".") + 1);
+    if (fmt == "txt") {
+        out = new bpt::writer_text(file.c_str());
+    } else if (fmt == "frames") {
+        out = new bpt::writer_frames(file.c_str());
+    } else {
+        std::cerr << "unknown trace format " << fmt << std::endl;
+        exit(0);
+    }
 
     TRACE_AddInstrumentFunction(trace, static_cast<VOID*>(out));
 

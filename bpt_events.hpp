@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 
+#include <boost/shared_ptr.hpp>
+
 #include <pin.H>
 
 #include "bpt_fwd.hpp"
@@ -69,34 +71,48 @@ private:
     virtual void do_accept(visitor&) const;
 };
 
-const int CLR = 1; //The flag is always cleared to 0.
-const int SET = 2; //The flag is always set to 1.
-const int AH = 4; //The flag is loaded with value from AH register
-const int MOD = 8; //The flag is modified, depending on the results of the instruction.
-const int POP = 16; //The flag is loaded with value popped off of the stack.
-const int TST = 32; //The flag is tested.
-const int UND = 64; //The effect on the flag is undefined.
+typedef int effect_type;
+const effect_type CLR = 1; //The flag is always cleared to 0.
+const effect_type SET = 2; //The flag is always set to 1.
+const effect_type AH = 4; //The flag is loaded with value from AH register
+const effect_type MOD = 8; //The flag is modified, depending on the results of the instruction.
+const effect_type POP = 16; //The flag is loaded with value popped off of the stack.
+const effect_type TST = 32; //The flag is tested.
+const effect_type UND = 64; //The effect on the flag is undefined.
+const effect_type RD = TST;
+const effect_type WR = CLR | SET | AH | MOD | POP | UND;
+
+namespace RFLAGS {
+struct field;
+typedef boost::shared_ptr<field> field_ptr;
+}
 
 struct flag {
-    flag(const std::string&, std::size_t, std::size_t width = 1);
+    flag(const RFLAGS::field_ptr&, effect_type);
     const std::string& name() const;
-    int effect(OPCODE) const;
+    effect_type effect() const;
     std::size_t width() const;
     bytes_type::value_type value(const bytes_type&) const;
 private:
-    struct impl;
-    boost::shared_ptr<impl> pimpl;
+    const RFLAGS::field_ptr field;
+    effect_type mask;
 };
 
 typedef std::vector<flag> flags_type;
 struct read_flags_event : read_event {
     read_flags_event(OPCODE, REG, const CONTEXT*);
     const flags_type& flags() const;
+    virtual std::ostream& operator<<(std::ostream&) const;
+private:
+    virtual void do_accept(visitor&) const;
 };
 
 struct write_flags_event : write_event {
     write_flags_event(OPCODE, REG, const CONTEXT*);
     const flags_type& flags() const;
+    virtual std::ostream& operator<<(std::ostream&) const;
+private:
+    virtual void do_accept(visitor&) const;
 };
 
 struct load_event : memory_event {
