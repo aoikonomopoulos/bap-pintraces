@@ -2,7 +2,7 @@
 
 #include "bpt_events.hpp"
 #include "bpt_bytes_io.hpp"
-#include "bpt_writer.hpp"
+#include "bpt_visitor.hpp"
 
 namespace bpt {
 
@@ -61,14 +61,14 @@ OPCODE register_event::opcode() const {
 read_event::read_event(OPCODE opcode, REG reg, const CONTEXT* ctx)
     : register_event(opcode, reg, ctx) {}
 
-void read_event::do_accept(writer& out) const {
+void read_event::do_accept(visitor& out) const {
     out.visit(*this);
 }
 
 write_event::write_event(OPCODE opcode, REG reg, const CONTEXT* ctx)
     : register_event(opcode, reg, ctx) {}
 
-void write_event::do_accept(writer& out) const {
+void write_event::do_accept(visitor& out) const {
     out.visit(*this);
 }
 

@@ -2,11 +2,11 @@
 #define BAP_WRITER_TEXT_HPP
 
 #include <fstream>
-#include "bpt_writer.hpp"
+#include "bpt_visitor.hpp"
 
 namespace bpt {
 
-struct writer_text : writer {
+struct writer_text : visitor {
     explicit writer_text(const char* file);
     virtual void visit(const event&);
 private:

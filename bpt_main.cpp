@@ -42,13 +42,13 @@ INT32 usage() {
 }
 
 VOID fini(INT32 code, VOID* ptr) {
-    bpt::writer* out = static_cast<bpt::writer*>(ptr);
+    bpt::visitor* out = static_cast<bpt::visitor*>(ptr);
     bpt::fini(code, out);
     delete out;
 }
 
 VOID trace(TRACE trace, VOID* ptr) {
-    bpt::writer* out = static_cast<bpt::writer*>(ptr);
+    bpt::visitor* out = static_cast<bpt::visitor*>(ptr);
     bpt::trace(trace, out);
 }
 
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
 
-    bpt::writer* out = new bpt::writer_text(tracefile.Value().c_str());
+    bpt::visitor* out = new bpt::writer_text(tracefile.Value().c_str());
 
     TRACE_AddInstrumentFunction(trace, static_cast<VOID*>(out));
 

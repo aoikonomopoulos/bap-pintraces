@@ -11,11 +11,11 @@
 namespace bpt {
 
 struct event {
-    void accept(writer&);
+    void accept(visitor&);
     virtual ~event();
     virtual std::ostream& operator<<(std::ostream&) const = 0;
 private:
-    virtual void do_accept(writer&) const = 0;
+    virtual void do_accept(visitor&) const = 0;
 };
 
 std::ostream& operator<<(std::ostream&, const event&);
@@ -30,7 +30,7 @@ struct operation_event : event {
     const char* disasm() const;
     virtual std::ostream& operator<<(std::ostream&) const;
 private:
-    virtual void do_accept(writer&) const;
+    virtual void do_accept(visitor&) const;
     struct impl;
     boost::shared_ptr<impl> pimpl;
 };
@@ -59,14 +59,14 @@ struct read_event : register_event {
     read_event(OPCODE, REG, const CONTEXT*);
     virtual std::ostream& operator<<(std::ostream&) const;
 private:
-    virtual void do_accept(writer&) const;
+    virtual void do_accept(visitor&) const;
 };
 
 struct write_event : register_event {
     write_event(OPCODE, REG, const CONTEXT*);
     virtual std::ostream& operator<<(std::ostream&) const;
 private:
-    virtual void do_accept(writer&) const;
+    virtual void do_accept(visitor&) const;
 };
 
 struct read_flags_event : read_event {
@@ -81,14 +81,14 @@ struct load_event : memory_event {
     load_event(ADDRINT addr, UINT32 size);
     virtual std::ostream& operator<<(std::ostream&) const;
 private:
-    virtual void do_accept(writer&) const;
+    virtual void do_accept(visitor&) const;
 };
 
 struct store_event : memory_event {
     store_event(ADDRINT addr, UINT32 size);
     virtual std::ostream& operator<<(std::ostream&) const;
 private:
-    virtual void do_accept(writer&) const;
+    virtual void do_accept(visitor&) const;
 };
 
 } //namespace bpt

@@ -9,14 +9,16 @@ namespace bpt {
 
 class event;
 class operation_event;
+class register_event;
 class read_event;
 class write_event;
 class read_flags_event;
 class write_flags_event;
+class memory_event;
 class load_event;
 class store_event;
 
-class writer;
+class visitor;
 
 typedef boost::shared_ptr<event> event_ptr;
 typedef std::vector<char> bytes_type;

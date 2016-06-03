@@ -6,8 +6,8 @@
 
 namespace bpt {
 
-VOID trace(TRACE, writer*);
-VOID fini(INT32 code, writer*);
+VOID trace(TRACE, visitor*);
+VOID fini(INT32 code, visitor*);
 
 }
 

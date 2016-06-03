@@ -1,6 +1,6 @@
 #include "bpt_events.hpp"
 #include "bpt_bytes_io.hpp"
-#include "bpt_writer.hpp"
+#include "bpt_visitor.hpp"
 
 namespace bpt {
 
@@ -46,7 +46,7 @@ const char* operation_event::disasm() const {
     return pimpl->disasm;
 }
 
-void operation_event::do_accept(writer& out) const {
+void operation_event::do_accept(visitor& out) const {
     out.visit(*this);
 }
 

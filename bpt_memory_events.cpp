@@ -1,6 +1,6 @@
 #include "bpt_events.hpp"
 #include "bpt_bytes_io.hpp"
-#include "bpt_writer.hpp"
+#include "bpt_visitor.hpp"
 
 namespace bpt {
 
@@ -28,13 +28,13 @@ const bytes_type& memory_event::bytes() const {
 
 load_event::load_event(ADDRINT addr, UINT32 size) : memory_event(addr, size) {}
 
-void load_event::do_accept(writer& out) const {
+void load_event::do_accept(visitor& out) const {
     out.visit(*this);
 }
 
 store_event::store_event(ADDRINT addr, UINT32 size) : memory_event(addr, size) {}
 
-void store_event::do_accept(writer& out) const {
+void store_event::do_accept(visitor& out) const {
     out.visit(*this);
 }
 

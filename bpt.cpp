@@ -12,7 +12,7 @@
 #include "bpt_events.hpp"
 #include "bpt_args_list.hpp"
 #include "bpt_inspection.hpp"
-#include "bpt_writer.hpp"
+#include "bpt_visitor.hpp"
 namespace bpt {
 
 typedef  std::vector<event_ptr> buffer;
@@ -31,7 +31,7 @@ static VOID handle_loads(buffer*, UINT32, ...);
 static VOID handle_stores(buffer*, UINT32, ...);
 
 struct tracer {
-    static void trace(TRACE trace, writer& out) {
+    static void trace(TRACE trace, visitor& out) {
         flush(out);
         for(BBL b = TRACE_BblHead(trace);
             BBL_Valid(b); b = BBL_Next(b)) {
@@ -39,12 +39,12 @@ struct tracer {
         }
     }
 
-    static void fini(INT32, writer& out) {
+    static void fini(INT32, visitor& out) {
         flush(out);
     }
 private:
     static buffer buff;
-    static void flush(writer& out) {
+    static void flush(visitor& out) {
         std::for_each(boost::begin(buff),
                       boost::end(buff),
                       boost::bind(&event::accept, _1, boost::ref(out)));
@@ -54,8 +54,8 @@ private:
 
 buffer tracer::buff;
 
-VOID trace(TRACE trace, writer* out) { tracer::trace(trace, *out); }
-VOID fini(INT32 code, writer* out) { tracer::fini(code, *out); }
+VOID trace(TRACE trace, visitor* out) { tracer::trace(trace, *out); }
+VOID fini(INT32 code, visitor* out) { tracer::fini(code, *out); }
 
 static void process_block(buffer& buff, BBL b) {
     INS ins = BBL_InsHead(b);
