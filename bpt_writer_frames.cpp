@@ -2,6 +2,7 @@
 
 #include <boost/range.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/foreach.hpp>
 
 #include <libtrace/trace.container.hpp>
 
@@ -34,6 +35,22 @@ struct std_frame_element : boost::noncopyable {
     void add(const write_event& e) { add(W, e); }
     void add(const load_event& e) { add(R, e); }
     void add(const store_event& e) { add(W, e); }
+    void add(const read_flags_event& e) {
+        BOOST_FOREACH(const flag& f, e.flags()) {
+            if (f.effect(e.opcode()) & TST) {
+                bytes_type::value_type b(f.value(e.bytes()));
+                add(R, f.name(), bytes_type(1, b), f.width());
+            }
+        }
+    }
+    void add(const write_flags_event& e) {
+        BOOST_FOREACH(const flag& f, e.flags()) {
+            if (f.effect(e.opcode()) & (CLR | SET | AH | MOD | POP | UND)) {
+                bytes_type::value_type b(f.value(e.bytes()));
+                add(R, f.name(), bytes_type(1, b), f.width());
+            }
+        }
+    }
 
     ~std_frame_element() {
         cont.add(frm);
