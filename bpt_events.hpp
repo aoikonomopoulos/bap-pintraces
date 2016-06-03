@@ -72,6 +72,7 @@ private:
 };
 
 typedef int effect_type;
+const effect_type NONE = 0;
 const effect_type CLR = 1; //The flag is always cleared to 0.
 const effect_type SET = 2; //The flag is always set to 1.
 const effect_type AH = 4; //The flag is loaded with value from AH register
