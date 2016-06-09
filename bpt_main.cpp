@@ -2,13 +2,14 @@
 #include <iostream>
 #include <pin.H>
 #include "bpt.hpp"
+#include "bpt_inst_counter.hpp"
 #include "bpt_writer_text.hpp"
 #include "bpt_writer_frames.hpp"
 
 KNOB<string> tracefile(KNOB_MODE_WRITEONCE, "pintool",
                        "o", "trace.frames",
                        "Trace file to output to "
-                       "(filename.{frames | txt})");
+                       "(filename.{frames | txt | cnt})");
 
 KNOB<string> split(KNOB_MODE_WRITEONCE, "pintool",
                    "split-flags", "insn",
@@ -62,6 +63,8 @@ int main(int argc, char *argv[]) {
         out = new bpt::writer_text(file.c_str());
     } else if (fmt == "frames") {
         out = new bpt::writer_frames(file.c_str());
+    } else if (fmt == "cnt") {
+        out = new bpt::inst_counter(file.c_str());
     } else {
         std::cerr << "unknown trace format " << fmt << std::endl;
         exit(0);

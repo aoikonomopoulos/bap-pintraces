@@ -115,7 +115,8 @@ static const frame_architecture arch = frame_arch_i386;
 #endif
 
 struct writer_frames::impl {
-    explicit impl(const char* file) : cont (file, arch, machine) {}
+    explicit impl(const std::string& file)
+        : cont (file, arch, machine) {}
     container_type cont;
     boost::scoped_ptr<std_frame_element> elem;
     ~impl() {
@@ -124,7 +125,8 @@ struct writer_frames::impl {
     }
 };
 
-writer_frames::writer_frames(const char* file) : pimpl(new impl(file)) {}
+writer_frames::writer_frames(const std::string& file)
+    : pimpl(new impl(file)) {}
 
 void writer_frames::visit(const event& e) {
     std::cerr << "warning: skipped event "

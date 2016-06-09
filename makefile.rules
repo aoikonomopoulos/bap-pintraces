@@ -317,6 +317,7 @@ BPTOBJS = $(OBJDIR)bpt$(OBJ_SUFFIX) \
           $(OBJDIR)bpt_flags_events$(OBJ_SUFFIX) \
           $(OBJDIR)bpt_memory_events$(OBJ_SUFFIX) \
           $(OBJDIR)bpt_visitor$(OBJ_SUFFIX) \
+          $(OBJDIR)bpt_inst_counter$(OBJ_SUFFIX) \
           $(OBJDIR)bpt_writer_text$(OBJ_SUFFIX) \
           $(OBJDIR)bpt_writer_frames$(OBJ_SUFFIX)
           

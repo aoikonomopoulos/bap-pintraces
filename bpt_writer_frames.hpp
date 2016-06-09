@@ -1,13 +1,14 @@
 #ifndef BPT_WRITER_FRAMES_HPP
 #define BPT_WRITER_FRAMES_HPP
 
+#include <string>
 #include <boost/shared_ptr.hpp>
 #include "bpt_visitor.hpp"
 
 namespace bpt {
 
 struct writer_frames : visitor {
-    explicit writer_frames(const char* file);
+    explicit writer_frames(const std::string& file);
     virtual void visit(const event&);
     virtual void visit(const operation_event&);
     virtual void visit(const read_event&);
