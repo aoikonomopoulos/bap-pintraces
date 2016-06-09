@@ -48,7 +48,7 @@ std::ostream& pp(std::ostream& out, const memory_event& e,
                << std::dec
                << ':'
                << sizeof(ADDRINT)*8
-               << " => "
+               << d
                << e.bytes()
                << ':'
                << e.bytes().size()*8;

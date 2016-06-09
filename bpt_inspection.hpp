@@ -6,8 +6,10 @@
 namespace bpt {
 
 class args_list;
-void inspect_inst_regs(INS ins, args_list& reads, args_list& writes);
-void inspect_inst_mem(INS ins, args_list& loads, args_list& stores);
+void inspect_inst_reads(INS, args_list&);
+void inspect_inst_writes(INS, args_list&);
+void inspect_inst_loads(INS, args_list&);
+void inspect_inst_stores(INS, args_list&);
 
 } //namespace pbt
 

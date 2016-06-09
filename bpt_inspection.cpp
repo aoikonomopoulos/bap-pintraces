@@ -8,16 +8,12 @@
 
 namespace bpt {
 
-static void inspect_inst_regs(INS ins,
-                              std::set<REG>& reads,
-                              std::set<REG>& writes) {
+static void inspect_inst_reads(INS ins, std::set<REG>& reads) {
     for (UINT32 i = 0, I = INS_OperandCount(ins); i < I; ++i) {
         if (INS_OperandIsReg(ins, i)) {
             REG reg = INS_OperandReg(ins, i);
             REG base = REG_FullRegName(reg);
             if (INS_OperandRead(ins, i)) reads.insert(base);
-            if (INS_OperandWritten(ins, i)) writes.insert(base);
-
             /* This is special case handle writes to partial registers,
                when the rest part of base register stays unchanged.*/
             if (INS_OperandWritten(ins, i) &&
@@ -48,11 +44,20 @@ static void inspect_inst_regs(INS ins,
             reads.insert(REG_FullRegName(index));
         }
     }
-    
     reads.erase(REG_INVALID());
-    writes.erase(REG_INVALID());
-
     reads.erase(REG_INST_PTR);
+}
+
+static void inspect_inst_writes(INS ins, std::set<REG>& writes) {
+    for (UINT32 i = 0, I = INS_OperandCount(ins); i < I; ++i) {
+        if (INS_OperandIsReg(ins, i) &&
+            INS_OperandWritten(ins, i)) {
+            REG reg = INS_OperandReg(ins, i);
+            REG base = REG_FullRegName(reg);
+            writes.insert(base);
+        }
+    }
+    writes.erase(REG_INVALID());
     writes.erase(REG_INST_PTR);
 }
 
@@ -63,23 +68,32 @@ static void copy(args_list& args, std::set<REG> set) {
     }
 }
 
-void inspect_inst_regs(INS ins, args_list& reads, args_list& writes) {
-    std::set<REG> r, w;
-    inspect_inst_regs(ins, r, w);
-    copy(reads, r);
-    copy(writes, w);
+void inspect_inst_reads(INS ins, args_list& reads) {
+    std::set<REG> regs;
+    inspect_inst_reads(ins, regs);
+    copy(reads, regs);
 }
 
-void inspect_inst_mem(INS ins, args_list& loads, args_list& stores) {
+void inspect_inst_writes(INS ins, args_list& writes) {
+    std::set<REG> regs;
+    inspect_inst_writes(ins, regs);
+    copy(writes, regs);
+}
+
+void inspect_inst_loads(INS ins, args_list& loads) {
     for (UINT32 i = 0, I = INS_MemoryOperandCount(ins); i < I; ++i) {
         if (INS_MemoryOperandIsRead(ins, i)) {
             loads(IARG_MEMORYOP_EA, i,
                   IARG_UINT32, INS_MemoryReadSize(ins));
         }
+    }
+}
 
+void inspect_inst_stores(INS ins, args_list& stores) {
+    for (UINT32 i = 0, I = INS_MemoryOperandCount(ins); i < I; ++i) {
         if (INS_MemoryOperandIsWritten(ins, i)) {
             stores(IARG_MEMORYOP_EA, i,
-                   IARG_UINT32, INS_MemoryReadSize(ins));
+                   IARG_UINT32, INS_MemoryWriteSize(ins));
         }
     }
 }

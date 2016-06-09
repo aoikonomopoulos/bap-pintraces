@@ -19,8 +19,13 @@ typedef  std::vector<event_ptr> buffer;
 static void process_block(buffer&, BBL);
 static void process_instruction(buffer&, INS);
 static void process_branching(buffer&, INS);
+static void process_inst(buffer&, INS);
 static void process_regs(buffer&, INS);
+static void process_reads(buffer&, INS);
+static void process_writes(buffer&, INS, IPOINT);
 static void process_mem(buffer&, INS);
+static void process_loads(buffer&, INS);
+static void process_stores(buffer&, INS, IPOINT);
 static VOID handle_operation(buffer*, const char*,
                              OPCODE, ADDRINT, UINT32, THREADID);
 static ADDRINT handle_reads(BOOL, buffer*,
@@ -66,10 +71,20 @@ static void process_block(buffer& buff, BBL b) {
     }
 
     INS tail = BBL_InsTail(b);
-    process_branching(buff, tail);
+    if (INS_HasFallThrough(tail)) {
+        process_instruction(buff, tail);
+    } else {
+        process_branching(buff, ins);
+    }
 }
 
 static void process_instruction(buffer& buff, INS ins) {
+    process_inst(buff, ins);
+    process_regs(buff, ins);
+    process_mem(buff, ins);
+}
+
+static void process_inst(buffer& buff, INS ins) {
 #ifdef BPT_DEBUG
     static std::set<std::string> disasms;
     std::string d = INS_Disassemble(ins);
@@ -87,28 +102,30 @@ static void process_instruction(buffer& buff, INS ins) {
                    IARG_UINT32, INS_Size(ins),
                    IARG_THREAD_ID,
                    IARG_END);
-    process_regs(buff, ins);
-    process_mem(buff, ins);
 }
 
 static void process_regs(buffer& buff, INS ins) {
+    process_reads(buff, ins);
+    process_writes(buff, ins, IPOINT_AFTER);
+}
+
+static void process_reads(buffer& buff, INS ins) {
     args_list common;
     common(IARG_PTR, &buff);
     common(IARG_UINT32, INS_Opcode(ins));
     common(IARG_CONST_CONTEXT);
 
-    args_list reads, writes;
-    inspect_inst_regs(ins, reads, writes);
-
-    args_list preds;
-    if (INS_HasRealRep(ins)) preds(IARG_UINT32,
-                                   INS_RepCountRegister(ins));
-
-    if (INS_IsPredicated(ins) &&
-        INS_RegRContain(ins, REG_AppFlags())) preds(IARG_UINT32,
-                                                    REG_AppFlags());
+    args_list reads;
+    inspect_inst_reads(ins, reads);
 
     if (INS_IsPredicated(ins)) {
+        args_list preds;
+        if (INS_HasRealRep(ins))
+            preds(IARG_UINT32, INS_RepCountRegister(ins));
+
+        if (INS_RegRContain(ins, REG_AppFlags()))
+            preds(IARG_UINT32, REG_AppFlags());
+
         INS_InsertIfCall(ins, IPOINT_BEFORE,
                          (AFUNPTR)(handle_reads),
                          IARG_EXECUTING,
@@ -125,41 +142,65 @@ static void process_regs(buffer& buff, INS ins) {
                            IARG_IARGLIST, preds.value(),
                            IARG_END);
     } else {
-        INS_InsertCall(ins, IPOINT_BEFORE,
-                       (AFUNPTR)(handle_reads),
-                       IARG_BOOL, true,
-                       IARG_IARGLIST, common.value(),
-                       IARG_UINT32, reads.size(),
-                       IARG_IARGLIST, reads.value(),
-                       IARG_END);
-
+        if (reads.size() != 0) {
+            INS_InsertCall(ins, IPOINT_BEFORE,
+                           (AFUNPTR)(handle_reads),
+                           IARG_BOOL, true,
+                           IARG_IARGLIST, common.value(),
+                           IARG_UINT32, reads.size(),
+                           IARG_IARGLIST, reads.value(),
+                           IARG_END);
+        }
     }
-    
-    INS_InsertPredicatedCall(ins, IPOINT_AFTER,
-                             (AFUNPTR)(&handle_writes),
-                             IARG_IARGLIST, common.value(),
-                             IARG_UINT32, writes.size(),
-                             IARG_IARGLIST, writes.value(),
-                             IARG_END);
+}
+
+static void process_writes(buffer& buff, INS ins, IPOINT point) {
+    args_list common;
+    common(IARG_PTR, &buff);
+    common(IARG_UINT32, INS_Opcode(ins));
+    common(IARG_CONST_CONTEXT);
+
+    args_list writes;
+    inspect_inst_writes(ins, writes);
+    if (writes.size() != 0) {
+        INS_InsertPredicatedCall(ins, point,
+                                 (AFUNPTR)(&handle_writes),
+                                 IARG_IARGLIST, common.value(),
+                                 IARG_UINT32, writes.size(),
+                                 IARG_IARGLIST, writes.value(),
+                                 IARG_END);
+    }
 }
 
 static void process_mem(buffer& buff, INS ins) {
-    args_list loads;
-    args_list stores;
-    inspect_inst_mem(ins, loads, stores);
+    process_loads(buff, ins);
+    process_stores(buff, ins, IPOINT_AFTER);
+}
 
-    INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
-                             (AFUNPTR)(handle_loads),
-                             IARG_PTR, &buff,
-                             IARG_UINT32, loads.size(),
-                             IARG_IARGLIST, loads.value(),
-                             IARG_END);
-    INS_InsertPredicatedCall(ins, IPOINT_AFTER,
-                             (AFUNPTR)(handle_stores),
-                             IARG_PTR, &buff,
-                             IARG_UINT32, stores.size(),
-                             IARG_IARGLIST, stores.value(),
-                             IARG_END);
+static void process_loads(buffer& buff, INS ins) {
+    args_list loads;
+    inspect_inst_loads(ins, loads);
+    if (loads.size() != 0) {
+        INS_InsertPredicatedCall(ins, IPOINT_BEFORE,
+                                 (AFUNPTR)(handle_loads),
+                                 IARG_PTR, &buff,
+                                 IARG_UINT32, loads.size(),
+                                 IARG_IARGLIST, loads.value(),
+                                 IARG_END);
+    }
+}
+
+static void process_stores(buffer& buff, INS ins, IPOINT point) {
+    args_list stores;
+    inspect_inst_stores(ins, stores);
+    if (stores.size() != 0) {
+        INS_InsertPredicatedCall(ins, point,
+                                 (AFUNPTR)(handle_stores),
+                                 IARG_PTR, &buff,
+                                 IARG_UINT32, stores.size(),
+                                 IARG_IARGLIST, stores.value(),
+                                 IARG_END);
+    }
 }
 
 
@@ -227,11 +268,26 @@ static VOID handle_stores(buffer* buff, UINT32 args_count, ...) {
 }
 
 static void process_branching(buffer& buff, INS ins) {
-    if (INS_HasRealRep(ins)) {
-        process_instruction(buff, ins);
+    process_inst(buff, ins);
+    process_reads(buff, ins);
+    process_loads(buff, ins);
+    if (INS_IsCall(ins)) {
+        process_writes(buff, ins, IPOINT_TAKEN_BRANCH);
+        process_stores(buff, ins, IPOINT_TAKEN_BRANCH);
+    } else if (INS_IsSyscall(ins)) {
+        std::cerr << "syscall arguments not stored" << std::endl;
     } else {
-        /*FIXME: unimplemented*/
-        //std::cerr << "B: " <<INS_Disassemble(ins) << std::endl;
+        args_list writes, stores;
+        inspect_inst_writes(ins, writes);
+        inspect_inst_stores(ins, stores);
+        if (writes.size() != 0 || stores.size() != 0) {
+            std::cerr << INS_Disassemble(ins)
+                      << " writes : "
+                      << writes.size()
+                      << " stores : "
+                      << stores.size()
+                      << std::endl;
+        }
     }
 }
 
