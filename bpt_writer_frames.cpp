@@ -47,7 +47,7 @@ struct std_frame_element : boost::noncopyable {
         BOOST_FOREACH(const flag& f, e.flags()) {
             if (f.effect() & WR) {
                 bytes_type::value_type b(f.value(e.bytes()));
-                add(R, f.name(), bytes_type(1, b), f.width());
+                add(W, f.name(), bytes_type(1, b), f.width());
             }
         }
     }
