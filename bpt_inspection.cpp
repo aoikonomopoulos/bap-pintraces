@@ -12,13 +12,13 @@ static void inspect_inst_reads(INS ins, std::set<REG>& reads) {
     for (UINT32 i = 0, I = INS_OperandCount(ins); i < I; ++i) {
         if (INS_OperandIsReg(ins, i)) {
             REG reg = INS_OperandReg(ins, i);
-            REG base = REG_FullRegName(reg);
-            if (INS_OperandRead(ins, i)) reads.insert(base);
+            REG parrent = REG_FullRegName(reg);
+            if (INS_OperandRead(ins, i)) reads.insert(parrent);
             /* This is special case handle writes to partial registers,
                when the rest part of base register stays unchanged.*/
             if (INS_OperandWritten(ins, i) &&
                 REG_is_partialreg(reg) &&
-                !REG_is_gr32(reg)) reads.insert(base);
+                !REG_is_gr32(reg)) reads.insert(parrent);
         }
 
         if (INS_OperandIsMemory(ins, i) ||
@@ -39,7 +39,6 @@ static void inspect_inst_reads(INS ins, std::set<REG>& reads) {
 
             REG base = INS_OperandMemoryBaseReg(ins, i);
             reads.insert(REG_FullRegName(base));
-
             REG index = INS_OperandMemoryIndexReg(ins, i);
             reads.insert(REG_FullRegName(index));
         }
@@ -53,8 +52,22 @@ static void inspect_inst_writes(INS ins, std::set<REG>& writes) {
         if (INS_OperandIsReg(ins, i) &&
             INS_OperandWritten(ins, i)) {
             REG reg = INS_OperandReg(ins, i);
-            REG base = REG_FullRegName(reg);
-            writes.insert(base);
+            REG parrent = REG_FullRegName(reg);
+            writes.insert(parrent);
+        }
+
+        if (INS_OperandIsMemory(ins, i) ||
+            INS_OperandIsAddressGenerator(ins, i)) {
+            REG base = INS_OperandMemoryBaseReg(ins, i);
+            if (INS_RegWContain(ins, base)) {
+                REG parrent = REG_FullRegName(base);
+                writes.insert(parrent);
+            }
+            REG index = INS_OperandMemoryIndexReg(ins, i);
+            if (INS_RegWContain(ins, index)) {
+                REG parrent = REG_FullRegName(index);
+                writes.insert(parrent);
+            }
         }
     }
     writes.erase(REG_INVALID());
