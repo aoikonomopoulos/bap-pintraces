@@ -1,8 +1,17 @@
 #include <string>
+#include <stdexcept>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include <boost/range.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
+
+#define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
+#include <crypto++/md5.h>
+#include <crypto++/hex.h>
+#include <crypto++/files.h>
 
 #include <libtrace/trace.container.hpp>
 
@@ -114,9 +123,88 @@ static const frame_architecture arch = frame_arch_i386;
 #error "Usupported machine"
 #endif
 
+namespace meta {
+template <typename T>
+void init_envp(T* record, char* envp[]) {
+    while(*envp) {
+        record->add_envp(*envp);
+        ++envp;
+    }
+}
+
+template <typename T>
+void init_args(T* record, int argc, char* argv[]) {
+    for (int i = 0; i < argc; ++i) {
+        record->add_args(argv[i]);
+    }
+}
+
+void init_tracer(::tracer* tracer,
+                 int argc, char* argv[], char* envp[]) {
+    tracer->set_name("bpt");
+    init_args(tracer, argc, argv);
+    init_envp(tracer, envp);
+    tracer->set_version("1.0.0/bpt");
+}
+
+std::string md5sum(const std::string& path) {
+    std::string md5;
+    CryptoPP::Weak::MD5 hash;
+    CryptoPP::FileSource(
+        path.c_str(), true,
+        new CryptoPP::HashFilter(
+            hash, new CryptoPP::HexEncoder(
+                new CryptoPP::StringSink(md5), false)));
+    return md5;
+}
+
+void init_target(::target* target, const std::string& path,
+                 int argc, char* argv[], char* envp[]) {
+    target->set_path(path);
+    init_args(target, argc, argv);
+    init_envp(target, envp);
+    target->set_md5sum(md5sum(path));
+}
+
+void init_fstats(::fstats* fstats, const std::string& path) {
+    struct stat stats;
+    if (stat(path.c_str(), &stats) < 0)
+        throw std::runtime_error("failed to obtain file stats");
+
+    fstats->set_size(stats.st_size);
+    fstats->set_atime(stats.st_atime);
+    fstats->set_mtime(stats.st_mtime);
+    fstats->set_ctime(stats.st_ctime);
+}
+
+::meta_frame create(int argc, char* argv[], char* envp[]) {
+    ::meta_frame meta;
+    int dpos = argc;
+    for (int i = 0; i < argc; ++i) {
+        if (std::string("--") == argv[i]) {
+            dpos = i;
+            break;
+        }
+    }
+    std::string path(argv[dpos + 1]);
+    init_tracer(meta.mutable_tracer(), dpos, argv, envp);
+    init_target(meta.mutable_target(), path,
+                      argc - dpos - 1, argv + dpos + 1, envp);
+    init_fstats(meta.mutable_fstats(), path);
+    meta.set_user(::getlogin());
+    char host[1024];
+    ::gethostname(host, sizeof(host));
+    meta.set_host(host);
+    meta.set_time(::time(0));
+    return meta;
+}
+} //namespace meta
+
 struct writer_frames::impl {
-    explicit impl(const std::string& file)
-        : cont (file, arch, machine) {}
+    explicit impl(const std::string& file, int argc, char* argv[],
+                  char* envp[])
+        : cont (file, meta::create(argc, argv, envp), arch, machine) {
+    }
     container_type cont;
     boost::scoped_ptr<std_frame_element> elem;
     ~impl() {
@@ -125,8 +213,9 @@ struct writer_frames::impl {
     }
 };
 
-writer_frames::writer_frames(const std::string& file)
-    : pimpl(new impl(file)) {}
+writer_frames::writer_frames(const std::string& file,
+                             int argc, char* argv[], char* env[])
+    : pimpl(new impl(file, argc, argv, env)) {}
 
 void writer_frames::visit(const event& e) {
     std::cerr << "warning: skipped event "

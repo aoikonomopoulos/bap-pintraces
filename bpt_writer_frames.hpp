@@ -8,7 +8,8 @@
 namespace bpt {
 
 struct writer_frames : visitor {
-    explicit writer_frames(const std::string& file);
+    explicit writer_frames(const std::string& file,
+                           int argc, char* argv[], char* env[]);
     virtual void visit(const event&);
     virtual void visit(const operation_event&);
     virtual void visit(const read_event&);

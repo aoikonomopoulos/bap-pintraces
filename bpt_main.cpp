@@ -52,17 +52,18 @@ VOID trace(TRACE trace, VOID* ptr) {
     bpt::trace(trace, out);
 }
 
+extern char** environ;
+
 int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
-
     bpt::visitor* out;    
     std::string file = tracefile.Value();
     std::string fmt = file.substr(file.find_last_of(".") + 1);
     if (fmt == "txt") {
-        out = new bpt::writer_text(file.c_str());
+        out = new bpt::writer_text(file.c_str(), argc, argv, environ);
     } else if (fmt == "frames") {
-        out = new bpt::writer_frames(file.c_str());
+        out = new bpt::writer_frames(file.c_str(), argc, argv, environ);
     } else if (fmt == "cnt") {
         out = new bpt::inst_counter(file.c_str());
     } else {

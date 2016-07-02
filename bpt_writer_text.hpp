@@ -8,7 +8,8 @@
 namespace bpt {
 
 struct writer_text : visitor {
-    explicit writer_text(const std::string& file);
+    explicit writer_text(const std::string& file,
+                         int argc, char *argv[], char* env[]);
     virtual void visit(const event&);
 private:
     std::ofstream out;
