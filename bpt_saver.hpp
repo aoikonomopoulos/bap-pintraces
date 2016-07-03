@@ -7,6 +7,7 @@ typedef std::vector<char> bytes_type;
 
 template <typename addr_type, typename thread>
 struct saver {
+    virtual void modload (const std::string&, addr_type, addr_type) = 0;
     virtual void code_exec(const std::string&,
                            addr_type, const bytes_type&, thread) = 0;
     virtual void memory_load(addr_type, const bytes_type&) = 0;

@@ -78,6 +78,14 @@ struct text_saver : saver<addr_type, thread> {
     explicit text_saver(const std::string& path)
         : out(path.c_str(), std::ofstream::out) {}
 
+    void modload(const std::string& name, addr_type low, addr_type high) {
+        out << "modload " << name << ": ";
+        print_addr(out, low);
+        out << " - ";
+        print_addr(out, high);
+        out << std::endl;
+    }
+
     void code_exec(const std::string& dis,
                    addr_type addr,
                    const bytes_type& bytes,

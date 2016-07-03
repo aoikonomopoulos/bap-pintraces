@@ -23,6 +23,14 @@ struct frames_saver : saver<addr_type, thread> {
     explicit frames_saver(const std::string& path)
         : out(path, arch, machine) {}
 
+    void modload(const std::string& name, addr_type low, addr_type high) {
+        frame f;
+        f.mutable_modload_frame()->set_module_name(name);
+        f.mutable_modload_frame()->set_low_address(low);
+        f.mutable_modload_frame()->set_high_address(high);
+        out.add(f);
+    }
+
     void code_exec(const std::string& dis,
                    addr_type addr,
                    const bytes_type& bytes,

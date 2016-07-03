@@ -39,6 +39,14 @@ INT32 usage() {
     return -1;
 }
 
+static void modload(IMG img, VOID *arg)
+{
+    tracer_type *tracer = static_cast<tracer_type *>(arg);
+    const string &name = IMG_Name(img);
+
+    tracer->save().modload(name, IMG_LowAddress(img), IMG_HighAddress(img));
+}
+
 int main(int argc, char *argv[]) {
     PIN_InitSymbols();
     if (PIN_Init(argc, argv)) return usage();
@@ -62,7 +70,8 @@ int main(int argc, char *argv[]) {
                               static_cast<VOID*>(tracer));
     PIN_AddFiniFunction(bpt::tool::fini,
                         static_cast<VOID*>(tracer));
-
+    IMG_AddInstrumentFunction(modload,
+                              static_cast<VOID*>(tracer));
     // Never returns
     PIN_StartProgram();
     
